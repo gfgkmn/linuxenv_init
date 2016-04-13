@@ -7,9 +7,8 @@ set nocompatible              " be iMproved, required
 filetype off                  " required
 
 "----------set the runtime path to include Vundle and initialize-------------------
-set rtp+="~/.vim/vundles/Vundle.vim/"
+set rtp+=~/.vim/vundles/Vundle.vim
 " alternatively, pass a path where Vundle should install plugins
-let path="~/.vim/vundles/"
 set backup
 set display=lastline
 set showcmd
@@ -18,7 +17,7 @@ set undodir=~/.vimbakfiles/undofiles/
 autocmd BufEnter * lcd %:p:h
 colorscheme default
 
-call vundle#rc(path)
+call vundle#begin("~/.vim/vundles")
 
 
 "----------let Vundle manage Vundle, required-------------------
@@ -43,14 +42,9 @@ Plugin 'jiangmiao/auto-pairs'
 " Plugin 'kana/vim-smartinput'
 Plugin 'SirVer/ultisnips'
 Plugin 'mbbill/undotree'
-Plugin 'tell-k/vim-autopep8'
+Plugin 'mindriot101/vim-yapf'
 Plugin 'jmcantrell/vim-virtualenv'
 Plugin 'Valloric/YouCompleteMe'
-
-" Plugin 'ervandew/supertab'
-
-" Plugin 'andviro/flake8-vim'
-" Plugin 'fholgado/minibufexpl.vim'
 Plugin 'honza/vim-snippets'
 Plugin 'kana/vim-textobj-user'
 Plugin 'bps/vim-textobj-python'
@@ -94,6 +88,8 @@ Plugin 'ktvoelker/sbt-vim'
 " autocmd filetype c Plugin 'vim-scripts/a.vim'
 Plugin 'vim-scripts/CCTree'
 Plugin 'vim-scripts/a.vim'
+
+call vundle#end()
 
 
 "use youcompleteme replace cscope

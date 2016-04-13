@@ -339,9 +339,10 @@ ZSH_THEME_GIT_PROMPT_CLEAN=""               # Text to display if the branch is c
 # Setup the prompt with pretty colors
 setopt prompt_subst
 
+source ~/Applications/bin/z.sh
+
 #some strange config
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
-export PATH=$PATH:/usr/local/cuda-7.0/bin
-export LD_LIBRARY_PATH=:/usr/local/cuda-7.0/lib64
+export PATH=$PATH:$HOME/Application/bin
 stty stop undef # to unmap ctrl+s
