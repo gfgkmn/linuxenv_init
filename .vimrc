@@ -42,7 +42,6 @@ Plugin 'jiangmiao/auto-pairs'
 " Plugin 'kana/vim-smartinput'
 Plugin 'SirVer/ultisnips'
 Plugin 'mbbill/undotree'
-Plugin 'mindriot101/vim-yapf'
 Plugin 'jmcantrell/vim-virtualenv'
 Plugin 'Valloric/YouCompleteMe'
 Plugin 'honza/vim-snippets'
@@ -245,6 +244,9 @@ noremap <leader>ch :SyntasticCheck<CR>
 noremap <leader>ck :SyntasticReset<CR>
 noremap <leader>co :copen<CR>
 noremap <leader>cq :cclose<CR>
+
+" yapf key-binding
+noremap <leader>cf :call yapf#YAPF()<cr>
 
 autocmd FileType c iabbrev \s //-->>
 autocmd FileType c iabbrev \e //<<--
