@@ -1,5 +1,5 @@
 yapf
-pyflakes
+flake8
 pep8
 virtualenv
 virtualenvwrapper
