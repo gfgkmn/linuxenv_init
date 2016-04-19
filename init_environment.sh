@@ -1,4 +1,3 @@
-sudo usermod -s /bin/zsh $USER
 sudo apt-get install ctags
 mkdir ~/.vimbakfiles
 mkdir -p ~/.vim/vundles/
