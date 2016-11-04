@@ -130,6 +130,7 @@ set scs
 hi normal guibg=#153948 guifg=white
 set guifont=Monaco:h13
 set number
+set relativenumber
 set ignorecase
 set nosmartcase
 set tag=./tags,tags,../tags,../../tags,../../../tags,/Users/gfgkmn/OpenSource/tags
