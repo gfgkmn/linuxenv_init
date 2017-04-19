@@ -359,7 +359,7 @@ function! GotoJump()
 endfunction"
 
 nmap <Leader>f :call GotoJump()<CR>
-nmap <leader>r :!python %<CR>
+nmap <leader>r :!%:p<CR>
 
 " syntastic check key-binding
 noremap <leader>ch :SyntasticCheck<CR>
@@ -398,4 +398,5 @@ autocmd FileType python setlocal et sta sw=4 sts=4
 autocmd FileType objc setlocal et sta sw=4 sts=4
 autocmd FileType python setlocal foldmethod=indent
 autocmd FileType python setlocal foldmethod=manual
+autocmd FileType python nmap <leader>r :!python %<CR>
 set foldlevel=99
