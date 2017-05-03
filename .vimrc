@@ -72,7 +72,7 @@ Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-unimpaired'
-Plug 'vim-scripts/EasyGrep'
+Plug 'mhinz/vim-grepper'
 Plug 'vim-scripts/TaskList.vim'
 Plug 'jlanzarotta/bufexplorer'
 Plug 'vim-scripts/WhereFrom'
@@ -151,7 +151,11 @@ runtime $VIMRUNTIME/macros/matchit.vim
 "set dictionary-=$VIM/vimfiles/otherfile/complete-dict dictionary+=$VIM/vimfiles/otherfile/complete-dict
 
 "let g:neocomplcache_enable_ignore_case = 1
-nnoremap <F3> :Grep
+nmap gs  <plug>(GrepperOperator)
+xmap gs  <plug>(GrepperOperator)
+nnoremap <leader>vr :Grepper<cr>
+let g:grepper = { 'next_tool': '<leader>g' }
+nnoremap <leader>vv :Grepper -tool grep -cword -noprompt<CR>
 
 "syntastic's config
 let g:syntastic_python_checkers = ['flake8',  'pep8', 'Pylint']
@@ -399,4 +403,5 @@ autocmd FileType objc setlocal et sta sw=4 sts=4
 autocmd FileType python setlocal foldmethod=indent
 autocmd FileType python setlocal foldmethod=manual
 autocmd FileType python nmap <leader>r :!python %<CR>
+autocmd FileType lua nmap <leader>r :!lua %<CR>
 set foldlevel=99
