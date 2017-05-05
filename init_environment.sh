@@ -20,3 +20,5 @@ mkdir -p ~/.vim/autoload/
 wget https://raw.githubusercontent.com/google/yapf/master/plugins/yapf.vim
 mv yapf.vim ~/.vim/autoload
 cp v ~/Application/bin/
+wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
+cp pbcopy ~/Application/bin/
