@@ -26,4 +26,5 @@ mkdir ~/.pip/
 cp ./pip.conf ~/.pip/
 git config --global user.email gfgkmn@gmail.com
 git config --global user.name yuhe
+cat bashrc >> ~/.bashrc
 
