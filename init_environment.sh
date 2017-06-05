@@ -14,10 +14,10 @@ cd ~/.vim/vundles
 git clone https://github.com/junegunn/vim-plug.git
 cd $current_folder
 cp .vimrc ~/
+mkdir -p ~/.vim/autoload
 cp ~/.vim/vundles/vim-plug/plug.vim ~/.vim/autoload/
 vim -c 'PlugUpdate' -c qa
-mkdir -p ~/.vim/autoload/
-wget https://raw.githubusercontent.com/google/yapf/master/plugins/yapf.vim
+wget https://raw.githubusercontent.com/google/yapf/master/plugins/vim/autoload/yapf.vim  
 mv yapf.vim ~/.vim/autoload
 cp v ~/Application/bin/
 wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
