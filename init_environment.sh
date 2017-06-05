@@ -22,3 +22,8 @@ mv yapf.vim ~/.vim/autoload
 cp v ~/Application/bin/
 wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
 cp pbcopy ~/Application/bin/
+mkdir ~/.pip/
+cp ./pip.conf ~/.pip/
+git config --global user.email gfgkmn@gmail.com
+git config --global user.name yuhe
+
