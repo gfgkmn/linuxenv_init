@@ -1,4 +1,6 @@
 # sudo apt-get install ctags
+sudo apt-get install build-essential cmake
+sudo apt-get python-dev python3-dev
 mkdir ~/.vimbakfiles
 mkdir -p ~/.vim/vundles/
 mkdir -p ~/Application/bin
@@ -12,6 +14,9 @@ cp ./z.sh ~/Application/bin
 current_folder=$(pwd)
 cd ~/.vim/vundles
 git clone https://github.com/junegunn/vim-plug.git
+cd $current_folder
+cd ~/.vim/vundles/YouCompleteMe/
+git submodule update --init --recursive
 cd $current_folder
 cp .vimrc ~/
 mkdir -p ~/.vim/autoload
