@@ -7,6 +7,8 @@ mkdir -p ~/Application/bin
 git clone https://github.com/facebook/PathPicker.git
 mv PathPicker ~/Application
 ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
+git clone --depth 1 https://github.com/junegunn/fzf.git
+./fzf/install
 mkdir -p ~/.ipython/profile_default
 cp ipython_config.py ~/.ipython/profile_default
 cp ./.inputrc ~/
