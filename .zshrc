@@ -3,7 +3,7 @@
 autoload -Uz promptinit
 promptinit
 
-autoload colors
+autoload -U colors
 colors
  
 for color in RED GREEN YELLOW BLUE MAGENTA CYAN WHITE; do
@@ -28,9 +28,8 @@ precmd_functions+='precmd_update_git_vars'
 chpwd_functions+='chpwd_update_git_vars'
  
 # Set the prompt.
-PROMPT=$'%M:$(prompt_git_info)%/	%D %T$FINISH
+PROMPT=$'%{${fg[red]}%}%M:%{$reset_color%}$(prompt_git_info)%/	%{${fg[black]}%}%D %T$FINISH
 %n>:$FINISH '
-
 
 alias ...='cd ../..'
 alias ll='ls -lh'
