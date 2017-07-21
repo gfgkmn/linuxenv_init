@@ -1,0 +1,28 @@
+dongbei_valid_weights.hdf5 model is generate in 20170511 maybe error
+dongbei_weights.hdf5 model is generate in 20170511 maybe error
+xibei_valid_weights.hdf5 model is generate in 20170511 maybe error
+xibei_weights.hdf5 model is generate in 20170511 maybe error
+huabei_valid_weights.hdf5 model is generate in 20170511 maybe error
+huabei_weights.hdf5 model is generate in 20170511 maybe error
+huadong_valid_weights.hdf5 model is generate in 20170511 maybe error
+huadong_weights.hdf5 model is generate in 20170511 maybe error
+huanan_valid_weights.hdf5 model is generate in 20170511 maybe error
+huanan_weights.hdf5 model is generate in 20170511 maybe error
+huaxi_valid_weights.hdf5 model is generate in 20170511 maybe error
+huaxi_weights.hdf5 model is generate in 20170511 maybe error
+beijing_valid_weights.hdf5 model is generate in 20170511 maybe error
+beijing_weights.hdf5 model is generate in 20170511 maybe error
+shanghai_valid_weights.hdf5 model is generate in 20170511 maybe error
+shanghai_weights.hdf5 model is generate in 20170511 maybe error
+tianjin_valid_weights.hdf5 model is generate in 20170511 maybe error
+tianjin_weights.hdf5 model is generate in 20170511 maybe error
+
+
+dongbei_valid model csi is two small, recent average is 0.181 and this time is 0.11
+huaxi_valid model csi is two small, recent average is 0.266 and this time is 0.04
+huabei_valid model csi is two small, recent average is 0.267 and this time is 0.13
+huadong_valid model csi is two small, recent average is 0.147 and this time is 0.09
+beijing_valid model csi is two small, recent average is 0.220 and this time is 0.14
+huanan_valid model csi is two small, recent average is 0.059 and this time is 0.03
+
+

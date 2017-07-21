@@ -1,6 +1,7 @@
-# sudo apt-get install ctags
+sudo apt-get install ctags
 sudo apt-get install build-essential cmake
-sudo apt-get python-dev python3-dev
+sudo apt-get install python-dev python3-dev
+sudo apt-get install mutt msmtp
 mkdir ~/.vimbakfiles
 mkdir -p ~/.vim/vundles/
 mkdir -p ~/Application/bin
@@ -35,3 +36,4 @@ git config --global user.email gfgkmn@gmail.com
 git config --global user.name yuhe
 cat bashrc >> ~/.bashrc
 
+cp -r ./mailtemplete ~/Application/
