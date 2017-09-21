@@ -20,6 +20,7 @@ git clone https://github.com/junegunn/vim-plug.git
 cd $current_folder
 cd ~/.vim/vundles/YouCompleteMe/
 git submodule update --init --recursive
+./install.py --clang-completer
 cd $current_folder
 cp .vimrc ~/
 mkdir -p ~/.vim/autoload
@@ -32,8 +33,6 @@ wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
 cp pbcopy ~/Application/bin/
 mkdir ~/.pip/
 cp ./pip.conf ~/.pip/
-git config --global user.email gfgkmn@gmail.com
-git config --global user.name yuhe
 cat bashrc >> ~/.bashrc
 
 cp -r ./mailtemplete ~/Application/
