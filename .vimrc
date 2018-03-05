@@ -13,7 +13,7 @@ set backup
 set display=lastline
 set showcmd
 set backupdir=~/.vimbakfiles/
-set undodir=~/.vimbakfiles/undofiles/
+" set undodir=~/.vimbakfiles/undofiles/
 set exrc
 set secure
 " autocmd BufEnter * lcd %:p:h
@@ -23,7 +23,7 @@ call plug#begin('~/.vim/vundles')
 
 
 "----------let Vundle manage Vundle, required-------------------
-Plug 'junegunn/vim-plug'
+Plug 'git@github.com:junegunn/vim-plug.git'
 
 "----------get the plugins use vundle-------------------
 " The following are examples of different formats supported.
@@ -34,67 +34,67 @@ Plug 'junegunn/vim-plug'
 " Plugin 'spolu/dwm'
 " Plugin 'klen/python-mode'
 " Plugin 'ivanov/vim-ipython'
-Plug 'jpalardy/vim-slime'
-Plug 'xolox/vim-misc'
-Plug 'xolox/vim-notes'
-Plug 'xolox/vim-session'
-Plug 'Lokaltog/vim-easymotion'
-Plug 'vim-scripts/fencview.vim'
-Plug 'vim-scripts/camelcasemotion'
-Plug 'vim-scripts/LargeFile'
-Plug 'jiangmiao/auto-pairs'
-Plug 'vim-scripts/matchit.zip'
-" Plugin 'kana/vim-smartinput'
-Plug 'SirVer/ultisnips'
-Plug 'mbbill/undotree'
-Plug 'tpope/vim-fugitive'
-Plug 'airblade/vim-gitgutter'
-Plug 'jmcantrell/vim-virtualenv'
-Plug 'Valloric/YouCompleteMe'
-Plug 'rdnetto/YCM-Generator', { 'branch': 'stable' }
-Plug 'honza/vim-snippets'
-Plug 'kana/vim-textobj-user'
-Plug 'bps/vim-textobj-python'
-Plug 'kana/vim-textobj-indent'
-Plug 'kana/vim-textobj-line'
-Plug 'kana/vim-textobj-entire'
-Plug 'sgur/vim-textobj-parameter'
-Plug 'glts/vim-textobj-comment'
-Plug 'Julian/vim-textobj-variable-segment'
-Plug 'rizzatti/dash.vim'
-Plug 'kien/ctrlp.vim'
-Plug 'mhinz/vim-startify'
-Plug 'majutsushi/tagbar'
-Plug 'scrooloose/nerdtree'
-Plug 'terryma/vim-expand-region'
-Plug 'terryma/vim-multiple-cursors'
-Plug 'tpope/vim-commentary'
-Plug 'tpope/vim-repeat'
-Plug 'tpope/vim-surround'
-Plug 'tpope/vim-unimpaired'
-Plug 'mhinz/vim-grepper'
-Plug 'vim-scripts/TaskList.vim'
-Plug 'jlanzarotta/bufexplorer'
-Plug 'vim-scripts/WhereFrom'
-" Plugin 'lervag/vimtex'
-" Plugin 'itchyny/calendar.vim'
-Plug 'vimwiki/vimwiki'
+Plug 'git@github.com:jpalardy/vim-slime.git'
+Plug 'git@github.com:xolox/vim-misc.git'
+Plug 'git@github.com:xolox/vim-notes.git'
+Plug 'git@github.com:xolox/vim-session.git'
+Plug 'git@github.com:Lokaltog/vim-easymotion.git'
+Plug 'git@github.com:vim-scripts/fencview.vim.git'
+Plug 'git@github.com:vim-scripts/camelcasemotion.git'
+Plug 'git@github.com:vim-scripts/LargeFile.git'
+Plug 'git@github.com:jiangmiao/auto-pairs.git'
+Plug 'git@github.com:vim-scripts/matchit.zip.git'
+" Plugin 'git@github.com:kana/vim-smartinput.git'
+Plug 'git@github.com:SirVer/ultisnips.git'
+Plug 'git@github.com:mbbill/undotree.git'
+Plug 'git@github.com:tpope/vim-fugitive.git'
+Plug 'git@github.com:airblade/vim-gitgutter.git'
+Plug 'git@github.com:jmcantrell/vim-virtualenv.git'
+" Plug 'git@github.com:Valloric/YouCompleteMe.git'
+Plug 'git@github.com:rdnetto/YCM-Generator', { 'git@github.com:branch': 'git@github.com:stable' }
+Plug 'git@github.com:honza/vim-snippets.git'
+Plug 'git@github.com:kana/vim-textobj-user.git'
+Plug 'git@github.com:bps/vim-textobj-python.git'
+Plug 'git@github.com:kana/vim-textobj-indent.git'
+Plug 'git@github.com:kana/vim-textobj-line.git'
+Plug 'git@github.com:kana/vim-textobj-entire.git'
+Plug 'git@github.com:sgur/vim-textobj-parameter.git'
+Plug 'git@github.com:glts/vim-textobj-comment.git'
+Plug 'git@github.com:Julian/vim-textobj-variable-segment.git'
+Plug 'git@github.com:rizzatti/dash.vim.git'
+Plug 'git@github.com:kien/ctrlp.vim.git'
+Plug 'git@github.com:mhinz/vim-startify.git'
+Plug 'git@github.com:majutsushi/tagbar.git'
+Plug 'git@github.com:scrooloose/nerdtree.git'
+Plug 'git@github.com:terryma/vim-expand-region.git'
+Plug 'git@github.com:terryma/vim-multiple-cursors.git'
+Plug 'git@github.com:tpope/vim-commentary.git'
+Plug 'git@github.com:tpope/vim-repeat.git'
+Plug 'git@github.com:tpope/vim-surround.git'
+Plug 'git@github.com:tpope/vim-unimpaired.git'
+Plug 'git@github.com:mhinz/vim-grepper.git'
+Plug 'git@github.com:vim-scripts/TaskList.vim.git'
+Plug 'git@github.com:jlanzarotta/bufexplorer.git'
+Plug 'git@github.com:vim-scripts/WhereFrom.git'
+" Plugin 'git@github.com:lervag/vimtex.git'
+" Plugin 'git@github.com:itchyny/calendar.vim.git'
+Plug 'git@github.com:vimwiki/vimwiki.git'
 
-Plug 'scrooloose/syntastic'
+Plug 'git@github.com:scrooloose/syntastic.git'
 
-Plug 'guns/vim-clojure-static', {'for': 'clojure'}
-Plug 'tpope/vim-fireplace', {'for': 'clojure'}
-Plug 'raymond-w-ko/vim-niji', {'for': 'clojure'}
+Plug 'git@github.com:guns/vim-clojure-static.git', {'for': 'clojure'}
+Plug 'git@github.com:tpope/vim-fireplace.git', {'for': 'clojure'}
+Plug 'git@github.com:raymond-w-ko/vim-niji.git', {'for': 'clojure'}
 
-Plug 'derekwyatt/vim-scala', {'for': 'scala'}
-Plug 'ktvoelker/sbt-vim', {'for': 'scala'}
+Plug 'git@github.com:derekwyatt/vim-scala.git', {'for': 'scala'}
+Plug 'git@github.com:ktvoelker/sbt-vim.git', {'for': 'scala'}
 
-Plug 'vim-scripts/CCTree'
-Plug 'Chiel92/vim-autoformat'
+Plug 'git@github.com:vim-scripts/CCTree.git'
+Plug 'git@github.com:Chiel92/vim-autoformat.git'
 
-Plug 'leafgarland/typescript-vim', {'for': 'typescript'}
-Plug 'Quramy/tsuquyomi', {'for': 'typescript'}
-Plug 'Shougo/vimproc.vim', {'for': 'typescript', 'do': 'make'}
+Plug 'git@github.com:leafgarland/typescript-vim.git', {'for': 'typescript'}
+Plug 'git@github.com:Quramy/tsuquyomi.git', {'for': 'typescript'}
+Plug 'git@github.com:Shougo/vimproc.vim.git', {'for': 'typescript', 'do': 'make'}
 
 call plug#end()
 
