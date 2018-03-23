@@ -40,7 +40,6 @@ then
 fi
 cp ipython_config.py ~/.ipython/profile_default
 cp ./.inputrc ~/
-cp ./z.sh ~/Application/bin
 current_folder=$(pwd)
 cd ~/.vim/vundles || exit
 git clone https://github.com/junegunn/vim-plug.git
@@ -58,7 +57,7 @@ cp ~/.vim/vundles/vim-plug/plug.vim ~/.vim/autoload/
 vim -c 'PlugUpdate' -c qa
 wget https://raw.githubusercontent.com/google/yapf/master/plugins/vim/autoload/yapf.vim  
 mv yapf.vim ~/.vim/autoload
-cp v ~/Application/bin/
+cp fasd ~/Application/bin/
 wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
 cp pbcopy ~/Application/bin/
 mkdir ~/.pip/
