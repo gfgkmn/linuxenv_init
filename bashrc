@@ -5,7 +5,7 @@ source $(which virtualenvwrapper.sh)
 source "~/Application/bin/fasd"
 alias j=z
 export HISTFILESIZE=
-export HISTSIZE=
+export HISTSIZE=200000
 export HISTTIMEFORMAT="[%F %T] "
 
 # fs [FUZZY PATTERN] - Select selected tmux session
