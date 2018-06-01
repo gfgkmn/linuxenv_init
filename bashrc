@@ -12,23 +12,17 @@ fi
 # export LC_ALL=en_US.UTF-8
 # export LANG=en_US.UTF-8
 export PATH=$PATH:$HOME/Application/bin
-# source $(which virtualenvwrapper.sh)
-source "$HOME/Application/bin/fasd"
+source $(which virtualenvwrapper.sh)
+# export LD_LIBRARY_PATH=/usr/local/cuda/lib64/
 alias j=z
 export HISTFILESIZE=
 export HISTSIZE=200000
 export HISTTIMEFORMAT="[%F %T] "
+PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\$ '
 
 # fs [FUZZY PATTERN] - Select selected tmux session
 #   - Bypass fuzzy finder if there's only one match (--select-1)
 #   - Exit if there's no match (--exit-0)
-fs() {
-	  local session
-	    session=$(tmux list-sessions -F "#{session_name}" | \
-		        fzf --query="$1" --select-1 --exit-0) &&
-			  tmux a -t "$session"
-
-}
 
 fasd_cache="$HOME/.fasd-init-bash"
 if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
@@ -49,15 +43,7 @@ alias sd='fasd -sid'     # interactive directory selection
 alias sf='fasd -sif'     # interactive file selection
 alias j='fasd_cd -d'     # cd, same functionality as j in autojump
 alias jj='fasd_cd -d -i' # cd with interactive selection
-# z() {
-#   local dir
-#   dir="$(fasd -Rdl "$1" | fzf -1 -0 --no-sort +m)" && cd "${dir}" || return 1
-# }
 
-
-# fs [FUZZY PATTERN] - Select selected tmux session
-#   - Bypass fuzzy finder if there's only one match (--select-1)
-#   - Exit if there's no match (--exit-0)
 fs() {
   local session
   session=$(tmux list-sessions -F "#{session_name}" | \
@@ -304,4 +290,3 @@ p() {
         | xargs $open > /dev/null 2> /dev/null
 }
 # zprof
-
