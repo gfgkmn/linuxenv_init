@@ -18,6 +18,11 @@ set undodir=~/.vimbakfiles/undofiles/
 set exrc
 set secure
 " set macmeta
+" autocmd BufEnter * lcd %:p:h
+autocmd FocusGained * :redraw!
+colorscheme gfgkmn
+if &diff
+    colorscheme default
 autocmd BufEnter * lcd %:p:h
 
 " call vundle#begin("~/.vim/vundles")
@@ -59,6 +64,7 @@ Plug 'git@github.com:SirVer/ultisnips.git'
 Plug 'git@github.com:mbbill/undotree.git'
 Plug 'git@github.com:tpope/vim-fugitive.git'
 Plug 'git@github.com:airblade/vim-gitgutter.git'
+Plug 'git@github.com:vim-scripts/vim-svngutter'
 Plug 'git@github.com:honza/vim-snippets.git'
 Plug 'git@github.com:inkarkat/vim-ingo-library.git'
 Plug 'git@github.com:kana/vim-textobj-user.git'
@@ -97,6 +103,10 @@ Plug 'git@github.com:idanarye/vim-makecfg.git'
 Plug 'git@github.com:w0rp/ale.git'
 Plug 'git@github.com:Chiel92/vim-autoformat.git'
 Plug 'git@github.com:metakirby5/codi.vim.git'
+
+
+Plug 'git@github.com:jceb/vim-orgmode'
+Plug 'git@github.com:tpope/vim-speeddating'
 
 
 Plug 'git@github.com:Shougo/vimproc.vim.git', {'for': ['c', 'cpp', 'cmake', 'typescript'], 'do': 'make'}
@@ -373,7 +383,8 @@ let g:UltiSnipsListSnippets = "<c-l>"
 let g:UltiSnipsExpandTrigger="<c-j>"
 "let g:UltiSnipsJumpForwardTrigger="<c-j>"
 "let g:UltiSnipsJumpBackwardTrigger="<c-k>"
-let g:UltiSnipsSnippetsDir = ['UltiSnips', '~/.vim/UltiSnips/']
+"let g:UltiSnipsSnippetsDir = ['UltiSnips', '~/.vim/UltiSnips/']
+let g:UltiSnipsSnippetDirectories = ['UltiSnips', '~/.vim/UltiSnips/']
 
 "vim-slime's config
 let g:slime_target = 'tmux'
@@ -420,7 +431,7 @@ nmap <Leader>f :call GotoJump()<CR>
 " let g:ale_sign_error = '?'
 " let g:ale_sign_warning = '●'
 let g:ale_enabled = 0
-let g:ale_linters = {"python": ['flake8']}
+let g:ale_linters = {"python": ['flake8'], "sh": ['shellcheck']}
 highlight clear AlEErrorSign
 highlight clear AlEWarningSign
 noremap <leader>ch :ALEToggle<CR>
@@ -434,6 +445,9 @@ noremap ]d :tabnext<CR>
 noremap <leader>oi :e ~/.vimrc<CR>
 noremap <leader>rl :so ~/.vimrc<CR>
 noremap ge :e <cfile><CR>
+
+"codi config
+noremap <leader>hc :Codi!! python<CR>
 
 " vim-session config
 let g:session_autosave = 'yes'
@@ -464,6 +478,8 @@ autocmd FileType objc setlocal et sta sw=4 sts=4
 autocmd FileType javascript setlocal et sta sw=4 sts=4
 autocmd FileType cpp setlocal et sta sw=4 sts=4
 autocmd FileType c setlocal et sta sw=4 sts=4
+autocmd FileType java setlocal tabstop=4
+" autocmd FileType cpp setlocal tabstop=4
 " autocmd FileType python setlocal foldmethod=indent
 set foldmethod=manual
 " autocmd FileType c setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*//'
@@ -482,19 +498,31 @@ autocmd FileType tex setlocal spell
 noremap <leader>cf :Autoformat<CR>
 " let g:formatter_yapf_style = 'pep8'
 " consider use autoformat to replace all of them below
- let g:formatdef_astyle_cpp = '"astyle --mode=c --style=google --max-code-length=95
-			\--indent-labels --indent-preproc-block --indent-classes
-			\--break-after-logical -pcH".(&expandtab ? "s".shiftwidth() : "t")'
-let g:formatters_cpp = ['astyle_cpp']
-" let g:formatdef_clang_format = "'clang-format -style=\"{BasedOnStyle: Google, IndentWidth: 4,
-" 			\AlwaysBreakTemplateDeclarations: false, ColumnLimit: 95}\"
-" 			\-lines='.a:firstline.':'.a:lastline"
-" let g:formatters_cpp = ['clang_format']
+let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-length=95
+		\ --indent-labels --indent-preproc-block --break-after-logical
+		\ -pcH".(&expandtab ? "s".&shiftwidth : "t")'
+let g:formatdef_google_java = "'java -jar ~/Applications/java_formatter.jar - 
+			\--skip-removing-unused-imports --aosp --skip-sorting-imports 
+			\--lines '.a:firstline.':'.a:lastline"
+" let g:formatters_java = ['google_java', 'astyle_java']
+let g:formatters_java = ['google_java']
+let g:formatdef_clang_format = "'clang-format -style=\"{BasedOnStyle: Google, IndentWidth: 4, 
+			\AlwaysBreakTemplateDeclarations: false, ColumnLimit: 95}\" 
+			\-lines='.a:firstline.':'.a:lastline"
+let g:formatters_cpp = ['clang_format']
 let g:formatdef_my_cmake = '"cmake-format -"'
 let g:formatters_cmake = ['my_cmake']
 " let g:autoformat_verbosemode=1
 autocmd FileType python noremap <leader>cf :call yapf#YAPF()<cr>
 " autocmd FileType python call SetYoucomeplete()
+
+" open file from anywhere config
+" Search spotlight {{{2
+command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
+            \ 'source'  : 'mdfind -onlyin ~ <q-args>',
+            \ 'options' : '-m --prompt "Spotlight> "'
+            \ }))
+nnoremap <leader>mf :FzfSpotlight 
 
 
 "----------this is running file config-------------
@@ -556,15 +584,41 @@ autocmd FileType vim nmap <leader>r :!vim -i NONE -u NONE -U NONE -V1 -nNesS % -
 autocmd FileType python nmap <leader>r :!python %<CR>
 autocmd FileType lua nmap <leader>r :!th %<CR>
 autocmd FileType markdown nmap <leader>r :InstantMarkdownPreview<CR>
+autocmd FileType sh nmap <leader>r :!bash %<CR>
 " autocmd FileType markdown let b:dispatch = 'octodown --live-reload %'
 autocmd FileType cpp nmap <leader>a :A<CR>
 autocmd FileType c nmap <leader>a :A<CR>
 
-autocmd FileType cpp nmap <leader>r :!$(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
+" autocmd FileType cpp nmap <leader>r :!$(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
+autocmd FileType cpp nmap <leader>r :!g++ -std=c++11 % && $(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
+" jump to the previous function
+autocmd Filetype cpp nnoremap <silent> [m :call
+			\ search('\(\(if\\|for\\|while\\|switch\\|catch\)\_s*\)\@64<!(\_[^)]*)\_[^;{}()]*\zs{', "bw")<CR>
+autocmd Filetype cpp nnoremap <silent> ]m :call 
+			\ search('\(\(if\\|for\\|while\\|switch\\|catch\)\_s*\)\@64<!(\_[^)]*)\_[^;{}()]*\zs{', "w")<CR>
 nmap <leader>cr :CMakeClean<CR>
 nmap <leader>mk :call Generalmake()<CR>
 nmap <leader>mc :set filetype=cpp<CR>
 nmap <leader>ml :call SwitchOrCreate()<CR>
+nmap <leader>df :windo diffthis<CR>
+nmap <leader>do :windo diffoff<CR>
+
+function FloatUp()
+    while line(".") > 1
+                \ && (strlen(getline(".")) < col(".")
+                \ || getline(".")[col(".") - 1] =~ '\s')
+        norm k
+    endwhile
+endfunction
+
+function FloatDown()
+  while line(".") > 1 && (strlen(getline(".")) < col(".") || getline(".")[col(".") - 1] =~ '\s')
+    norm j
+  endwhile
+endfunction
+
+noremap <silent> [1 :call FloatUp()<CR>
+noremap <silent> ]1 :call FloatDown()<CR>
 
 " self defined function
 function! s:get_visual_selection()
@@ -594,4 +648,8 @@ endfunction
 
 xnoremap <leader>m :<c-h><c-h><c-h><c-h><c-h>call Mathpipe2()<CR>
 xnoremap <leader>M :<c-h><c-h><c-h><c-h><c-h>call Mathpipe1()<CR>
-noremap ,cp :let @+=expand("%:p")<CR>
+noremap ,cf :let @+=expand("%:p")<CR>
+map ,cp :r!ssh sogou_dev "xclip -o"<CR>
+
+vnoremap <leader>en :!python -c 'import sys,urllib;print urllib.quote(sys.stdin.read().strip())'<cr>
+vnoremap <leader>de :!python -c 'import sys,urllib;print urllib.unquote(sys.stdin.read().strip())'<cr>
