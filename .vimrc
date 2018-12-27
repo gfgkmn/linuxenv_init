@@ -23,7 +23,7 @@ autocmd FocusGained * :redraw!
 colorscheme gfgkmn
 if &diff
     colorscheme default
-autocmd BufEnter * lcd %:p:h
+endif
 
 " call vundle#begin("~/.vim/vundles")
 call plug#begin('~/.vim/vundles')
