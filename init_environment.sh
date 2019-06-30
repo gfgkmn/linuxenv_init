@@ -33,7 +33,8 @@ git clone https://github.com/facebook/PathPicker.git
 mv PathPicker ~/Application
 ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
 git clone --depth 1 https://github.com/junegunn/fzf.git
-./fzf/install
+mv fzf ~/Application/
+~/Application/fzf/install
 if [ ! -d ~/.ipython/profile_default ]
 then
 	mkdir -p ~/.ipython/profile_default
