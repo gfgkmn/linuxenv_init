@@ -20,7 +20,6 @@ set secure
 " set macmeta
 " autocmd BufEnter * lcd %:p:h
 autocmd FocusGained * :redraw!
-colorscheme gfgkmn
 if &diff
     colorscheme default
 endif
@@ -149,10 +148,10 @@ Plug 'git@github.com:vim-scripts/luarefvim.git', {'for': 'lua'}
 Plug 'git@github.com:lervag/vimtex.git', {'for': ['tex', 'plaintex', 'bst']}
 Plug 'git@github.com:rbonvall/vim-textobj-latex.git', {'for': ['tex', 'plaintex', 'bst']}
 
-Plug 'git@github.com:Valloric/YouCompleteMe.git', { 'do': function('BuildYCM') , 'for': ['python','objc', 'c', 'cpp']}
-Plug 'git@github.com:rdnetto/YCM-Generator.git', { 'branch': 'stable', 'for': ['python', 'c', 'cpp']}
+" Plug 'git@github.com:Valloric/YouCompleteMe.git', { 'do': function('BuildYCM') , 'for': ['python','objc', 'c', 'cpp']}
+" Plug 'git@github.com:rdnetto/YCM-Generator.git', { 'branch': 'stable', 'for': ['python', 'c', 'cpp']}
 
-Plug 'git@github.com:tenfyzhong/CompleteParameter.vim.git', {'for': ['python', 'c', 'cpp']}
+" Plug 'git@github.com:tenfyzhong/CompleteParameter.vim.git', {'for': ['python', 'c', 'cpp']}
 
 call plug#end()
 
@@ -374,8 +373,8 @@ if !exists("g:ycm_semantic_triggers")
 endif
 "" endfunction
 
-" CompleteParameter config
-inoremap <silent><expr> K complete_parameter#pre_complete("()")
+" " CompleteParameter config
+" inoremap <silent><expr> K complete_parameter#pre_complete("()")
 
 "UltiSnips config
 let g:UltiSnipsListSnippets = "<c-l>"

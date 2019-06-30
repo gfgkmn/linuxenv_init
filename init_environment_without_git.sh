@@ -50,10 +50,10 @@ then
 	mkdir -p ~/.vim/autoload
 fi
 cp ~/.vim/vundles/vim-plug/plug.vim ~/.vim/autoload/
-vim -c 'PlugUpdate' -c qa
-cd ~/.vim/vundles/YouCompleteMe/ || exit
-git submodule update --init --recursive
-./install.py --clang-completer
+# vim -c 'PlugUpdate' -c qa
+# cd ~/.vim/vundles/YouCompleteMe/ || exit
+# git submodule update --init --recursive
+# ./install.py --clang-completer
 mv yapf.vim ~/.vim/autoload
 cp fasd ~/Application/bin/
 cp pbcopy ~/Application/bin/

@@ -2,7 +2,7 @@
 
 RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
 
-if [ "RedHatEnterpriseServer" = "$RELEASE" ];
+if [[ "RedHatEnterpriseServer" = "$RELEASE"  || "CentOS" = "$RELEASE" ]];
 then
 	sudo yum install ctags
 	sudo yum install build-essential cmake
@@ -52,9 +52,9 @@ then
 fi
 cp ~/.vim/vundles/vim-plug/plug.vim ~/.vim/autoload/
 vim -c 'PlugUpdate' -c qa
-cd ~/.vim/vundles/YouCompleteMe/ || exit
-git submodule update --init --recursive
-./install.py --clang-completer
+# cd ~/.vim/vundles/YouCompleteMe/ || exit
+# git submodule update --init --recursive
+# ./install.py --clang-completer
 wget https://raw.githubusercontent.com/google/yapf/master/plugins/vim/autoload/yapf.vim  
 mv yapf.vim ~/.vim/autoload
 cp fasd ~/Application/bin/
