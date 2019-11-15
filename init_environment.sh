@@ -29,50 +29,65 @@ if [ ! -d ~/Applications/bin ]
 then
 	mkdir -p ~/Application/bin
 fi
-git clone https://github.com/facebook/PathPicker.git
-mv PathPicker ~/Application
-ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
-git clone --depth 1 https://github.com/junegunn/fzf.git
-mv fzf ~/Application/
-~/Application/fzf/install
+if [[ ! -d ~/Application/PathPicker ]]; then
+	git clone https://github.com/facebook/PathPicker.git
+	mv PathPicker ~/Application
+	ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
+fi
+if [[ ! -d ~/Application/fzf ]]; then
+	git clone --depth 1 https://github.com/junegunn/fzf.git
+	mv fzf ~/Application/
+	~/Application/fzf/install
+fi
 if [ ! -d ~/.ipython/profile_default ]
 then
 	mkdir -p ~/.ipython/profile_default
+	cp ipython_config.py ~/.ipython/profile_default
 fi
-cp ipython_config.py ~/.ipython/profile_default
 cp ./.inputrc ~/
 current_folder=$(pwd)
-cd ~/.vim/vundles || exit
-git clone https://github.com/junegunn/vim-plug.git
-cd "$current_folder" || exit
+if [[ ! -d ~/.vim/vundles/vim-plug ]]; then
+	cd ~/.vim/vundles || exit
+	git clone https://github.com/junegunn/vim-plug.git
+fi
 cd "$current_folder" || exit
 cp .vimrc ~/
 if [ ! -d ~/.vim/autoload ]
 then
 	mkdir -p ~/.vim/autoload
+	cp ~/.vim/vundles/vim-plug/plug.vim ~/.vim/autoload/
 fi
-cp ~/.vim/vundles/vim-plug/plug.vim ~/.vim/autoload/
 vim -c 'PlugUpdate' -c qa
 # cd ~/.vim/vundles/YouCompleteMe/ || exit
 # git submodule update --init --recursive
 # ./install.py --clang-completer
-wget https://raw.githubusercontent.com/google/yapf/master/plugins/vim/autoload/yapf.vim  
-mv yapf.vim ~/.vim/autoload
-cp fasd ~/Application/bin/
-wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
-cp pbcopy ~/Application/bin/
-mkdir ~/.pip/
-cp ./pip.conf ~/.pip/
+if [[ ! -f ~/.vim/autoload/yapf.vim ]]; then
+	wget https://raw.githubusercontent.com/google/yapf/master/plugins/vim/autoload/yapf.vim
+	mv yapf.vim ~/.vim/autoload
+fi
+if [[ ! -f ~/Application/bin/fasd ]]; then
+	cp fasd ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/pbcopy ]]; then
+	wget https://raw.githubusercontent.com/skaji/remote-pbcopy-iterm2/master/pbcopy
+	cp pbcopy ~/Application/bin/
+fi
+if [[ ! -f ~/.pip/pip.conf ]]; then
+	mkdir ~/.pip/
+	cp ./pip.conf ~/.pip/
+fi
 cat bashrc >> ~/.bashrc
 
-cp -r ./mailtemplete ~/Application/
+if [[ ! -f ~/Application/mailtemplete ]]; then
+	cp -r ./mailtemplete ~/Application/
+fi
 
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 
 # bash Miniconda2-latest-Linux-x86_64.sh
 # bash Miniconda3-latest-Linux-x86_64.sh
-# 
+#
 git clone https://github.com/vim/vim.git
 
 # wget https://www.kernel.org/pub/software/scm/git/git-2.16.2.tar.xz
