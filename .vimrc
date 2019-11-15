@@ -602,7 +602,7 @@ nmap <leader>ml :call SwitchOrCreate()<CR>
 nmap <leader>df :windo diffthis<CR>
 nmap <leader>do :windo diffoff<CR>
 
-function FloatUp()
+function! FloatUp()
     while line(".") > 1
                 \ && (strlen(getline(".")) < col(".")
                 \ || getline(".")[col(".") - 1] =~ '\s')
@@ -610,7 +610,7 @@ function FloatUp()
     endwhile
 endfunction
 
-function FloatDown()
+function! FloatDown()
   while line(".") > 1 && (strlen(getline(".")) < col(".") || getline(".")[col(".") - 1] =~ '\s')
     norm j
   endwhile
