@@ -30,6 +30,7 @@ if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
 fi
 source "$fasd_cache"
 unset fasd_cache
+set completion-ignore-case on
 
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
