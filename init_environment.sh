@@ -44,7 +44,7 @@ then
 	mkdir -p ~/.ipython/profile_default
 	cp ipython_config.py ~/.ipython/profile_default
 fi
-cp ./.inputrc ~/
+cp .inputrc ~/
 current_folder=$(pwd)
 if [[ ! -d ~/.vim/vundles/vim-plug ]]; then
 	cd ~/.vim/vundles || exit
