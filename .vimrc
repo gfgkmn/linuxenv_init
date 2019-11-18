@@ -106,6 +106,8 @@ Plug 'git@github.com:metakirby5/codi.vim.git'
 
 Plug 'git@github.com:jceb/vim-orgmode'
 Plug 'git@github.com:tpope/vim-speeddating'
+Plug 'git@github.com:machakann/vim-swap'
+
 
 
 Plug 'git@github.com:Shougo/vimproc.vim.git', {'for': ['c', 'cpp', 'cmake', 'typescript'], 'do': 'make'}
@@ -649,6 +651,7 @@ xnoremap <leader>m :<c-h><c-h><c-h><c-h><c-h>call Mathpipe2()<CR>
 xnoremap <leader>M :<c-h><c-h><c-h><c-h><c-h>call Mathpipe1()<CR>
 noremap ,cf :let @+=expand("%:p")<CR>
 map ,cp :r!ssh sogou_dev "xclip -o"<CR>
+map ,cy :w !xclip<CR>
 
 vnoremap <leader>en :!python -c 'import sys,urllib;print urllib.quote(sys.stdin.read().strip())'<cr>
 vnoremap <leader>de :!python -c 'import sys,urllib;print urllib.unquote(sys.stdin.read().strip())'<cr>
