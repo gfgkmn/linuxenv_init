@@ -8,11 +8,13 @@ then
 	sudo yum install build-essential cmake
 	sudo yum install python-dev python3-dev
 	sudo yum install mutt msmtp
+	sudo yum install xclip
 else
 	sudo apt-get install ctags
 	sudo apt-get install build-essential cmake
 	sudo apt-get install python-dev python3-dev
 	sudo apt-get install mutt msmtp
+	sudo apt-get install xclip
 fi
 
 if [ ! -d ~/.vimbakfiles ]
