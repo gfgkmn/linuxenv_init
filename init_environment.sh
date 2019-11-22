@@ -76,3 +76,5 @@ wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 git clone https://github.com/vim/vim.git
 
 # wget https://www.kernel.org/pub/software/scm/git/git-2.16.2.tar.xz
+
+# pip install -r requirements.txt
