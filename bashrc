@@ -30,6 +30,7 @@ if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
 fi
 source "$fasd_cache"
 unset fasd_cache
+set completion-ignore-case on
 
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
@@ -137,7 +138,7 @@ v() {
   files=$(grep '^>' ~/.viminfo | cut -c3- |
           while read line; do
             [ -f "${line/\~/$HOME}" ] && echo "$line"
-          done | fzf-tmux -d -m -q "$*" -1) && vim ${files//\~/$HOME}
+          done | fzf -d -m -q "$*" -1) && vim ${files//\~/$HOME}
 }
 
 
