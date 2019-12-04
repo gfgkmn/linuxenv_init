@@ -67,6 +67,9 @@ if [[ ! -f ~/.vim/autoload/yapf.vim ]]; then
 	wget https://raw.githubusercontent.com/google/yapf/master/plugins/vim/autoload/yapf.vim
 	mv yapf.vim ~/.vim/autoload
 fi
+if [[ ! -d ~/.vim/UltiSnips ]]; then
+    cp -R ./UltiSnips/ ~/.vim/
+fi
 if [[ ! -f ~/Application/bin/fasd ]]; then
 	cp fasd ~/Application/bin/
 fi
