@@ -1,0 +1,48 @@
+snippet gload
+import gzip
+import cPickle
+${1:variablename} = cPickle.load(gzip.open(${0:filename}, 'r'))
+endsnippet
+
+snippet gdump "pickle load file" b
+import cPickle
+import gzip
+cPickle.dump(${1:object}, gzip.open('${0:filename}', 'w'))
+endsnippet
+
+snippet pdump "pickle load file" b
+import pickle
+pickle.dump(${1:object}, open('${0:filename}', 'w'))
+endsnippet
+
+snippet pload "pickle dump file" b
+import pickle
+${1:object} = pickle.load(open('${0:filename}', 'r'))
+endsnippet
+
+snippet todo "implement this function" b
+raise NotImplementedError("Todo: implement this function")
+endsnippet
+
+snippet dosome "do some command line dealwith operation" b
+import sys
+
+def dosome():
+    for line in sys.stdin:
+        ${1:dealwith}
+
+if __name__ == "__main__":
+    dosome()
+endsnippet
+
+snippet codeopen "use codecs open different encoding file"
+import codecs
+with codecs.open(${1:filename}, 'r', encoding="${2:encoding}", errors="ignore") as fp:
+    for line in fp:
+        
+endsnippet
+
+
+snippet tc
+# tocreate: 
+endsnippet
