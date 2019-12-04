@@ -45,6 +45,8 @@ if [ ! -d ~/.ipython/profile_default ]
 then
 	mkdir -p ~/.ipython/profile_default
 	cp ipython_config.py ~/.ipython/profile_default
+    mkdir -p ~/.ipython/profile_default/startup/
+    cp 00-forimport.py ~/.ipython/profile_default/startup/
 fi
 cp .inputrc ~/
 current_folder=$(pwd)
