@@ -2,7 +2,6 @@ source $VIMRUNTIME/vimrc_example.vim
 "source $VIMRUNTIME/mswin.vim
 "behave mswin
 
-
 set nocompatible              " be iMproved, required
 filetype off                  " required
 
@@ -56,13 +55,12 @@ function! TernInstall(info)
     endif
 endfunction
 
-" Plug 'kana/vim-smartinput'
-" Plug 'itchyny/calendar.vim'
-" Plug 'vimwiki/vimwiki'
 " Plug 'xolox/vim-notes'
-Plug 'jpalardy/vim-slime'
 " Plug 'xolox/vim-misc'
 " Plug 'xolox/vim-session'
+" Plug 'tpope/vim-dispatch'
+" Plug 'skywind3000/asyncrun.vim'
+Plug 'jpalardy/vim-slime'
 Plug 'Lokaltog/vim-easymotion'
 Plug 'vim-scripts/fencview.vim'
 Plug 'vim-scripts/camelcasemotion'
@@ -84,29 +82,26 @@ Plug 'kana/vim-textobj-entire'
 Plug 'sgur/vim-textobj-parameter'
 Plug 'glts/vim-textobj-comment'
 Plug 'Julian/vim-textobj-variable-segment'
-Plug 'skywind3000/asyncrun.vim'
 Plug 'rizzatti/dash.vim'
 Plug 'kien/ctrlp.vim'
-Plug 'jlanzarotta/bufexplorer'
+Plug 'gfgkmn/bufexplorer'
 Plug 'scrooloose/nerdtree'
 Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'mhinz/vim-startify'
-Plug 'majutsushi/tagbar'
-" Plug 'liuchengxu/vista.vim'
+Plug 'liuchengxu/vista.vim'
 Plug 'terryma/vim-expand-region'
-Plug 'terryma/vim-multiple-cursors'
-" Plug 'mg979/vim-visual-multi'
+Plug 'mg979/vim-visual-multi'
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-surround'
 Plug 'vim-scripts/AnsiEsc.vim'
 Plug 'kshenoy/vim-signature'
 Plug 'tpope/vim-unimpaired'
+Plug 'gfgkmn/web_search'
 Plug 'mhinz/vim-grepper'
 Plug '/usr/local/opt/fzf'
 Plug 'junegunn/fzf.vim'
 Plug 'vim-scripts/WhereFrom'
-Plug 'tpope/vim-dispatch'
 Plug 'godlygeek/tabular'
 Plug 'wellle/visual-split.vim'
 Plug 'wellle/tmux-complete.vim'
@@ -114,6 +109,7 @@ Plug 'tpope/vim-vinegar'
 Plug 'idanarye/vim-makecfg'
 Plug 'tfnico/vim-gradle'
 Plug 'machakann/vim-swap'
+Plug 'zenbro/mirror.vim'
 
 Plug 'w0rp/ale'
 Plug 'Chiel92/vim-autoformat'
@@ -166,7 +162,6 @@ Plug 'lervag/vimtex', {'for': ['tex', 'plaintex', 'bst']}
 Plug 'rbonvall/vim-textobj-latex', {'for': ['tex', 'plaintex', 'bst']}
 
 Plug 'Valloric/YouCompleteMe', { 'do': function('BuildYCM') , 'for': ['python','objc', 'c', 'cpp', 'java', 'javascript']}
-" Plug 'zxqfl/tabnine-vim'
 Plug 'rdnetto/YCM-Generator', { 'branch': 'stable' }
 
 call plug#end()
@@ -224,71 +219,25 @@ let g:grepper = {'tools': ['ag'],
             \}}
 
 
-""Tagbar's config
-if !hasmapto(':TagbarToggle')
-    map \tg :TagbarToggle<CR>
-    map \ct :!ctags -R -f ~/Applications/tags
-                \`python -c "from distutils.sysconfig
-                \import get_python_lib; print get_python_lib()"`<CR>
 
-    let g:tagbar_type_objc = {
-                \ 'ctagstype' : 'ObjectiveC',
-                \ 'kinds'     : [
-                \ 'i:interface',
-                \ 'I:implementation',
-                \ 'p:Protocol',
-                \ 'm:Object_method',
-                \ 'c:Class_method',
-                \ 'v:Global_variable',
-                \ 'F:Object field',
-                \ 'f:function',
-                \ 'p:property',
-                \ 't:type_alias',
-                \ 's:type_structure',
-                \ 'e:enumeration',
-                \ 'M:preprocessor_macro',
-                \ ],
-                \ 'sro'        : ' ',
-                \ 'kind2scope' : {
-                \ 'i' : 'interface',
-                \ 'I' : 'implementation',
-                \ 'p' : 'Protocol',
-                \ 's' : 'type_structure',
-                \ 'e' : 'enumeration'
-                \ },
-                \ 'scope2kind' : {
-                \ 'interface'      : 'i',
-                \ 'implementation' : 'I',
-                \ 'Protocol'       : 'p',
-                \ 'type_structure' : 's',
-                \ 'enumeration'    : 'e'
-                \ }
-                \ }
-    let g:tagbar_type_cmake = {
-                \'cmaketype' : 'CMakeFile',
-                \'kinds' : [
-                \'v:var',
-                \'f:func',
-                \'m:macro',
-                \'x:regex'
-                \],
-                \'sort': 1}
-endif
-
-if !hasmapto(':TagbarTogglePause')
-    map \lt :TagbarTogglePause<CR>
-    map \t2 :TagbarSetFoldlevel! 2<CR>
-    map \t1 :TagbarSetFoldlevel! 1<CR>
-endif
-let g:tagbar_foldlevel = 2
-
-" " vista config
-" let g:vista#executive#ctags#support_json_format = 1
-" let g:vista#executives = ['coc', 'ctags', 'lcn', 'vim_lsp']
-" let g:vista#render#ctags = 'default'
-" let g:vista#renderer#ctags = 'default'
-" let g:vista#renderer#default#vlnum_offset = 3
-" map \tg :Vista!!<CR>
+" vista config
+let g:vista#executive#ctags#support_json_format = 1
+let g:vista#executives = ['coc', 'ctags', 'lcn', 'vim_lsp']
+let g:vista#render#ctags = 'default'
+let g:vista#renderer#ctags = 'default'
+let g:vista#renderer#default#vlnum_offset = 3
+let g:vista_icon_indent = ["▸ ", ""]
+" let g:vista#renderer#enable_icon = 1
+let g:vista_sidebar_width = 70
+let g:vista#renderer#icons = {
+\   "function": "•",
+\   "variable": "◼︎",
+\   "command": "►",
+\   "map": "◆",
+\   "class": "✦",
+\   "member": "⦿",
+\  }
+map \tg :Vista!!<CR>
 
 
 "tex preview config
@@ -366,17 +315,23 @@ endif
 "nnoremap <leader>hu :SignifyHunkUndo<CR>
 "nnoremap <leader>hr :SignifyRefresh<CR>
 "nnoremap <leader>hs :Gwrite<CR>
-set updatetime=400
+set updatetime=200
 "gitgutter refresh
 map \tr :GitGutterAll<CR>
-let g:gitgutter_max_signs = 600
+map \ga :GitGutterToggle<CR>
+let g:gitgutter_enabled = 1
+let g:gitgutter_max_signs = 2000
 
-
+" autopair config
+imap <C-d>p <M-p>
+imap <C-d>e <M-e>
+imap <C-d>n <M-n>
+imap <C-d>b <M-b>
 
 """youCompleteMe's config
-"" function! SetYoucomeplete()
 let g:ycm_complete_in_comments = 1
 let g:ycm_python_binary_path = "python"
+" let g:ycm_python_binary_path = "~/.virtualenvs/py3-dev/bin/python"
 let g:ycm_min_num_of_chars_for_completion = 56
 let g:ycm_show_diagnostics_ui = 0
 " let g:ycm_key_invoke_completion = '<C-S-o>'
@@ -384,6 +339,17 @@ let g:ycm_confirm_extra_conf = 0
 let g:ycm_key_list_select_completion = ['<tab>', '<Down>']
 let g:ycm_key_list_previous_completion = ['<s-tab>', '<Up>']
 let g:ycm_global_ycm_extra_conf = "~/.vim/vundles/YouCompleteMe/third_party/ycmd/cpp/ycm/.ycm_extra_conf.py"
+" let g:ycm_global_ycm_extra_conf = "/Users/gfgkmn/Research/transformer/jungnet/.ycm_extra_conf.py"
+
+function! GetYcmDebugFile()
+    redir =>output
+    silent YcmDebugInfo
+    redir END
+    let line = split(output, "\n")[-1][4:]
+    silent execute "!ycmdebug ".line
+    redraw!
+endfunction 
+
 nnoremap <leader>gg :YcmCompleter GoToDeclaration<CR>
 nnoremap <leader>gf :YcmCompleter GoToDefinition<CR>
 nnoremap <leader>gl :YcmCompleter GoToImprecise<CR>
@@ -391,6 +357,7 @@ nnoremap <leader>gr :YcmCompleter GoToReference<CR>
 nnoremap <leader>gd :YcmCompleter GetDoc<CR>
 nnoremap <leader>gc :YcmCompleter GetParent<CR>
 nnoremap <leader>gp :YcmCompleter GetType<CR>
+nnoremap <leader>yd :call GetYcmDebugFile()<CR>
 
 inoremap <C-S-o> <C-x><C-o>
 
@@ -399,7 +366,6 @@ autocmd! BufNewFile,BufRead Dvcfile,*.dvc setfiletype yaml
 autocmd! BufNewFile,BufRead .tern-project setfiletype json
 
 if !exists("g:ycm_semantic_triggers")
-    " let g:ycm_semantic_triggers = {}
     let g:ycm_semantic_triggers =  {
                 \   'c' : ['->', '.'],
                 \   'objc' : ['->', '.', 're!\[[_a-zA-Z]+\w*\s', 're!^\s*[^\W\d]\w*\s',
@@ -445,9 +411,8 @@ let g:slime_target = 'tmux'
 let g:slime_python_ipython = 1
 let g:slime_default_config = {"socket_name": "default", "target_pane": ":"}
 let g:slime_dont_ask_default = 1
-noremap <leader>s :SlimeSend<CR>
-noremap <leader>ss :%SlimeSend<CR>
-noremap <leader>si dwlpldt)%p
+noremap <leader>ss :SlimeSend<CR>
+noremap <leader>sa :%SlimeSend<CR>
 
 "minibufexpl's config
 "----------this is myself key-binding for jump between different subwindows.
@@ -469,7 +434,7 @@ function! GotoJump()
     jumps
     let j = input("Please select your jump: ")
     if j != ''
-        let pattern = '\v\c^\+'
+        let pattern = '\v\c^\j'
         if j =~ pattern
             let j = substitute(j, pattern, '', 'g')
             execute "normal " . j . "\<c-i>"
@@ -485,7 +450,7 @@ nmap <Leader>f :call GotoJump()<CR>
 let g:ale_sign_error = '✗'
 let g:ale_sign_warning = '●'
 let g:ale_enabled = 0
-let g:ale_linters = {"python": ['flake8'], "sh": ['shellcheck']}
+let g:ale_linters = {"python": ['flake8'], "sh": ['shellcheck'], "javascript": ["jslint"]}
 highlight clear AlEErrorSign
 highlight clear AlEWarningSign
 noremap <leader>ch :ALEToggle<CR>
@@ -529,8 +494,8 @@ autocmd FileType mma setlocal commentstring=(*\ %s\ *)
 set diffopt=filler,context:3,iwhite
 " setlocal et sta sw=4 sts=4 tabstop=4
 set et sw=4 sts=4 tabstop=4
-" set textwidth=95
-set textwidth=80
+" set textwidth=80
+set textwidth=110
 " set autoindent
 " set smartindent
 
@@ -539,7 +504,6 @@ set textwidth=80
 set foldmethod=manual
 " autocmd FileType c setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*//'
 " autocmd FileType python setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*#'
-command! -nargs=1 Silent execute 'silent !' . <q-args> | execute 'redraw!'
 set matchpairs+=<:>
 " avoid make message prompt
 let g:bufferline_echo=0
@@ -553,11 +517,9 @@ autocmd FileType tex noremap <leader>wc :w !detex % \| wc<CR>
 
 "----------autoformat config-------------
 noremap <leader>cf :Autoformat<CR>
-" let g:formatter_yapf_style = 'pep8'
-" consider use autoformat to replace all of them below
 let g:formatters_java = ['astyle_java']
-let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-length=80
-            \ --indent-labels --indent-preproc-block --break-after-logical
+let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-length=".(&textwidth).
+            \ "--indent-labels --indent-preproc-block --break-after-logical
             \ -pcH".(&expandtab ? "s".&shiftwidth : "t")'
 " let g:formatters_java = ['google_java']
 " let g:formatdef_google_java = "'java -jar ~/Applications/java_formatter.jar -
@@ -565,21 +527,25 @@ let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-len
 "             \--lines '.a:firstline.':'.a:lastline"
 let g:formatters_cpp = ['clang_format']
 let g:formatdef_clang_format = "'clang-format -style=\"{BasedOnStyle: Google, IndentWidth: 4,
-            \AlwaysBreakTemplateDeclarations: false, ColumnLimit: 80}\"
+            \AlwaysBreakTemplateDeclarations: false, ColumnLimit: ".(&textwidth)."}\"
             \-lines='.a:firstline.':'.a:lastline"
 let g:formatters_cmake = ['my_cmake']
 let g:formatdef_my_cmake = '"cmake-format -"'
 let g:formatters_mason = ['html_beautify']
+let g:formatters_python = ['yapf']
 let g:formatters_html = ['html_beautify']
 let g:formatdef_html_beautify = '"html-beautify -".(&expandtab ? "s ".shiftwidth() :
             \"t").(&textwidth ? " -w ".&textwidth : "")'
 let g:formatters_javascript= ['jsbeautify_javascript']
 let g:formatdef_jsbeautify_javascript = '"js-beautify -".(&expandtab ? "s ".shiftwidth() :
             \"t").(&textwidth ? " -w ".&textwidth : "")'
-let g:formatter_yapf_style = 'google'
+" let g:formatter_yapf_style = 'google'
+let g:formatdef_yapf = '"yapf --style=\"{column_limit: ".(&textwidth)."}\" -l ".a:firstline."-".a:lastline' 
+let g:autoformat_autoindent = 0
+let g:autoformat_retab = 0
+let g:autoformat_remove_trailing_spaces = 0
 " let g:autoformat_verbosemode=1
-" autocmd FileType python noremap <leader>cf :call yapf#YAPF()<cr>
-" autocmd FileType python call SetYoucomeplete()
+let verbose=1
 
 " open file from anywhere config
 " Search spotlight {{{2
@@ -587,7 +553,67 @@ command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
             \ 'source'  : 'mdfind -onlyin ~ <q-args>',
             \ 'options' : '-m --prompt "Spotlight> "'
             \ }))
-nnoremap <leader>mf :FzfSpotlight
+" tocreate: how to config locate 
+" command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
+"             \ 'source'  : 'locate <q-args>',
+"             \ 'options' : '-m --prompt "Spotlight> "'
+"             \ }))
+nnoremap <leader>mf :FzfSpotlight<Space>
+
+
+" need to improve it
+" function! ReformatMultiLines()
+"     let brx = '^\s*"'
+"     let erx = '"\s*$'
+"     let fullrx = brx . '\(.\+\)' . erx
+"     let startLine = line(".")
+"     let endLine   = line(".")
+"     while getline(startLine) =~ fullrx
+"         let startLine -= 1
+"     endwhile
+"     if getline(endLine) =~ erx
+"         let endLine += 1
+"     endif
+"     while getline(endLine) =~ fullrx
+"         let endLine += 1
+"     endwhile
+"     if startLine != endLine
+"         exec endLine . ' s/' . brx . '//'
+"         exec startLine . ' s/' . erx . '//'
+"         exec startLine . ',' . endLine . ' s/' . fullrx . '/\1/'
+"         exec startLine . ',' . endLine . ' join'
+"     endif
+"     exec startLine
+"     let orig_tw = &tw
+"     if &tw == 0
+"         let &tw = &columns
+"         if &tw > 79
+"             let &tw = 79
+"         endif
+"     endif
+"     let &tw -= 3 " Adjust for missing quotes and space characters
+"     exec "normal A%-%\<Esc>gqq"
+"     let &tw = orig_tw
+"     let endLine = search("%-%$")
+"     exec endLine . ' s/%-%$//'
+"     if startLine == endLine
+"         return
+"     endif
+"     exec endLine
+"     exec 'normal I"'
+"     exec startLine
+"     exec 'normal A "'
+"     if endLine - startLine == 1
+"         return
+"     endif
+"     let startLine += 1
+"     while startLine != endLine
+"         exec startLine
+"         exec 'normal I"'
+"         exec 'normal A "'
+"         let startLine += 1
+"     endwhile
+" endfunction
 
 function! s:copy_results(lines)
     let joined_lines = join(a:lines, "\n")
@@ -670,13 +696,12 @@ endfunction
 
 nmap <leader>r :!%:p<CR>
 autocmd FileType vim nmap <leader>r :!vim -i NONE -u NONE -U NONE -V1 -nNesS % -c 'qall'<CR>
-autocmd FileType python nmap <leader>r :!python3 %<CR>
-autocmd FileType python nmap <leader>tt :!python3 -m doctest -v %<CR>
-autocmd FileType python nmap <leader>ut :!python3 -m unittest -v %<CR>
+autocmd FileType python nmap <leader>r :!python %<CR>
+autocmd FileType python nmap <leader>tt :!python -m doctest -v %<CR>
+autocmd FileType python nmap <leader>ut :!python -m unittest -v %<CR>
 autocmd FileType lua nmap <leader>r :!th %<CR>
 autocmd FileType markdown nmap <leader>r <Plug>MarkdownPreviewToggle
-" autocmd FileType markdown nmap <leader>r :AsyncRun octodown %<CR>
-" autocmd FileType markdown let b:dispatch = 'octodown --live-reload %'
+autocmd FileType html nmap <leader>r :call HtmlPreview()<CR>
 autocmd FileType sh nmap <leader>r :!bash %<CR>
 autocmd FileType java nmap <leader>r :!javac % && java %:t:r<CR>
 autocmd FileType mma nmap <leader>r :!wolframscript -script %<CR>
@@ -757,3 +782,53 @@ map ,cy :w !xclip<CR>
 
 vnoremap <leader>en :!python -c 'import sys,urllib;print urllib.quote(sys.stdin.read().strip())'<cr>
 vnoremap <leader>de :!python -c 'import sys,urllib;print urllib.unquote(sys.stdin.read().strip())'<cr>
+
+
+" star search
+if exists('loaded_starsearch')
+	finish
+endif
+let loaded_starsearch = 1
+
+let s:savedCpo = &cpo
+set cpo&vim
+
+function! s:VStarsearch_searchCWord()
+	let wordStr = expand("<cword>")
+	if strlen(wordStr) == 0
+		echohl ErrorMsg
+		echo 'E348: No string under cursor'
+		echohl NONE
+		return
+	endif
+	
+	if wordStr[0] =~ '\<'
+		let @/ = '\<' . wordStr . '\>'
+	else
+		let @/ = wordStr
+	endif
+
+	let savedUnnamed = @"
+	let savedS = @s
+	normal! "syiw
+	if wordStr != @s
+		normal! w
+	endif
+	let @s = savedS
+	let @" = savedUnnamed
+endfunction
+
+" https://github.com/bronson/vim-visual-star-search/
+function! s:VStarsearch_searchVWord()
+	let savedUnnamed = @"
+	let savedS = @s
+	normal! gv"sy
+	let @/ = '\V' . substitute(escape(@s, '\'), '\n', '\\n', 'g')
+	let @s = savedS
+	let @" = savedUnnamed
+endfunction
+
+nnoremap <silent> * :call <SID>VStarsearch_searchCWord()<CR>:set hls<CR>
+vnoremap <silent> * :<C-u>call <SID>VStarsearch_searchVWord()<CR>:set hls<CR>
+
+let &cpo = s:savedCpo
