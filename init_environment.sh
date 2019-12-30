@@ -15,6 +15,7 @@ else
 	sudo apt-get install python-dev python3-dev
 	sudo apt-get install mutt msmtp
 	sudo apt-get install xclip
+    sudo apt-get install silversearcher-ag
 fi
 
 if [ ! -d ~/.vimbakfiles ]

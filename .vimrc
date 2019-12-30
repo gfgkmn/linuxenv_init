@@ -19,9 +19,10 @@ set secure
 " set macmeta
 " autocmd BufEnter * lcd %:p:h
 autocmd FocusGained * :redraw!
-if &diff
-    colorscheme default
-endif
+colorscheme default
+" if &diff
+"     colorscheme default
+" endif
 
 " call vundle#begin("~/.vim/vundles")
 call plug#begin('~/.vim/vundles')
@@ -114,7 +115,7 @@ Plug 'w0rp/ale'
 Plug 'Chiel92/vim-autoformat'
 Plug 'metakirby5/codi.vim'
 Plug 'johngrib/vim-mac-dictionary'
-if v:version == 801
+if v:version >= 800
     " Plugin goes here.
     Plug 'mg979/vim-visual-multi'
     Plug 'vim-scripts/VimRepress'
