@@ -41,7 +41,7 @@ function! BuildYCM(info)
     " - status: 'installed', 'updated', or 'unchanged'
     " - force:  set on PlugInstall! or PlugUpdate!
     if a:info.status == 'installed' || a:info.force
-        !./install.py --clang-completer --tern-completer
+        !./install.py --clang-completer
     endif
 endfunction
 
@@ -90,7 +90,6 @@ Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'mhinz/vim-startify'
 Plug 'liuchengxu/vista.vim'
 Plug 'terryma/vim-expand-region'
-Plug 'mg979/vim-visual-multi'
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-surround'
@@ -117,6 +116,7 @@ Plug 'metakirby5/codi.vim'
 Plug 'johngrib/vim-mac-dictionary'
 if v:version == 801
     " Plugin goes here.
+    Plug 'mg979/vim-visual-multi'
     Plug 'vim-scripts/VimRepress'
     Plug 'SirVer/ultisnips'
 endif
