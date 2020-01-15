@@ -11,7 +11,7 @@ fi
 # User specific aliases and functions
 # export LC_ALL=en_US.UTF-8
 # export LANG=en_US.UTF-8
-export PATH=$PATH:$HOME/Application/bin
+export PATH=$HOME/Application/bin:$PATH
 source $(which virtualenvwrapper.sh)
 # export LD_LIBRARY_PATH=/usr/local/cuda/lib64/
 alias j=z
