@@ -12,6 +12,7 @@ then
 else
 	sudo apt-get install build-essential cmake
 	sudo apt-get install python-dev python3-dev
+    sudo apt-get install libjansson-dev # ctags needs json
 	sudo apt-get install mutt msmtp
 	sudo apt-get install xclip
     sudo apt-get install silversearcher-ag
@@ -119,6 +120,6 @@ git clone https://github.com/vim/vim.git
 git clone git@github.com:universal-ctags/ctags.git
 cd ctags
 ./autogen.sh
-./configure --prefix=~/Application # defaults to /usr/local
+./configure --prefix=~/Application --enable-json # defaults to /usr/local
 make
 make install # may require extra privileges depending on where to install
