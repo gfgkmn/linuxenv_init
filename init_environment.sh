@@ -60,7 +60,7 @@ if [[ ! -d ~/.vim/vundles/vim-plug ]]; then
 	git clone https://github.com/junegunn/vim-plug.git
 fi
 cd "$current_folder" || exit
-cp .vimrc ~/
+cp vimrc ~/.vimrc
 if [ ! -d ~/.vim/autoload ]
 then
 	mkdir -p ~/.vim/autoload
