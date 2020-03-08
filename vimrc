@@ -19,13 +19,33 @@ set secure
 " set macmeta
 " autocmd BufEnter * lcd %:p:h
 autocmd FocusGained * :redraw!
-colorscheme default
-" if &diff
-"     colorscheme default
-" endif
+if has('mac')
+    colorscheme gfgkmn
+else
+    colorscheme default
+endif
+if &diff
+    colorscheme default
+endif
 
 " call vundle#begin("~/.vim/vundles")
 call plug#begin('~/.vim/vundles')
+
+" Python Setting {
+if has("gui_macvim")
+    set pythondll=/usr/local/Frameworks/Python.framework/Versions/3.6/Python
+    set pythonhome=/usr/local/Frameworks/Python.framework/Versions/3.6
+    set pythonthreedll=/usr/local/Frameworks/Python.framework/Versions/3.6/Python
+    set pythonthreehome=/usr/local/Frameworks/Python.framework/Versions/3.6
+endif
+" }
+
+
+" dvc file syntax
+autocmd! BufNewFile,BufRead Dvcfile,*.dvc setfiletype yaml
+autocmd! BufNewFile,BufRead .tern-project setfiletype json
+autocmd! BufNewFile,BufRead *.conf setfiletype configfile
+autocmd! BufNewFile,BufRead *.coffee setfiletype coffeescript
 
 
 "----------let Vundle manage Vundle, required-------------------
@@ -42,7 +62,11 @@ function! BuildYCM(info)
     " - status: 'installed', 'updated', or 'unchanged'
     " - force:  set on PlugInstall! or PlugUpdate!
     if a:info.status == 'installed' || a:info.force
-        !./install.py --clang-completer
+        if has('mac')
+            !./install.py --all
+        else
+            !./install.py --clang-completer
+        endif
     endif
 endfunction
 
@@ -140,9 +164,11 @@ Plug 'alvan/vim-closetag', {'for': ['html', 'css', 'xhtml', 'xml']}
 Plug 'mattn/emmet-vim', {'for': ['html', 'css', 'xhtml', 'xml', 'mason']}
 Plug 'whatyouhide/vim-textobj-xmlattr', {'for': ['html', 'css', 'xhtml', 'xml']}
 
-Plug 'rsmenon/vim-mathematica'
+Plug 'voldikss/vim-mma', {'for': 'mma'}
+Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins', 'for': 'mma'}
 
 Plug 'plasticboy/vim-markdown', {'for': 'markdown'}
+Plug 'reedes/vim-pencil', {'for': 'markdown'}
 Plug 'iamcco/markdown-preview.nvim', {'for': 'markdown', 'do': 'cd app & yarn install'}
 
 Plug 'guns/vim-clojure-static', {'for': 'clojure'}
@@ -151,6 +177,8 @@ Plug 'raymond-w-ko/vim-niji', {'for': 'clojure'}
 
 Plug 'derekwyatt/vim-scala', {'for': 'scala'}
 Plug 'ktvoelker/sbt-vim', {'for': 'scala'}
+
+Plug 'kchmck/vim-coffee-script', {'for': 'coffeescript'}
 
 Plug 'leafgarland/typescript-vim', {'for': 'typescript'}
 Plug 'Quramy/tsuquyomi', {'for': 'typescript'}
@@ -219,6 +247,9 @@ let g:grepper = {'tools': ['ag'],
             \  'grepprg': 'ag --vimgrep --ignore-dir "build"'
             \}}
 
+" vim-swap 
+" let g:swap#rules = deepcopy(g:swap#default_rules)
+" todo to know how to sway a + b + c
 
 
 " vista config
@@ -237,6 +268,7 @@ let g:vista#renderer#icons = {
 \   "map": "◆",
 \   "class": "✦",
 \   "member": "⦿",
+\   "namespace": "❥"
 \  }
 map \tg :Vista!!<CR>
 
@@ -269,8 +301,8 @@ if exists("loaded_matchit")
 endif
 
 " close them all
-map \ca :NERDTreeClose <bar> cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> TagbarClose<CR>
-map \ci :only<CR>
+map <leader>ca :NERDTreeClose <bar> cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> Vista!<CR>
+map <leader>ci :only<CR>
 
 " yankstack config
 nmap <leader>p <Plug>yankstack_substitute_older_paste
@@ -289,6 +321,12 @@ let g:NERDTreeSortOrder = ['\/$', '*','\.swp$',  '\.bak$', '\~$', '[[-timestamp]
 if !hasmapto(':DashSearch')
     nmap <silent> <leader>dd <Plug>DashSearch
 endif
+
+" websearch
+let g:web_search_use_default_mapping = "yes"
+let g:web_search_engine = "google"
+let g:web_search_command = "open"
+nnoremap <leader>se :WebSearch<CR>
 
 " dict's keymapping
 nnoremap <leader>ds :MacDictWord<CR>
@@ -324,15 +362,19 @@ let g:gitgutter_enabled = 1
 let g:gitgutter_max_signs = 2000
 
 " autopair config
+" disable autpopair
 imap <C-d>p <M-p>
+" bring next word forward
 imap <C-d>e <M-e>
+" jump after paird symbol
 imap <C-d>n <M-n>
+" after ignore input, regrest it
 imap <C-d>b <M-b>
 
 """youCompleteMe's config
 let g:ycm_complete_in_comments = 1
-let g:ycm_python_binary_path = "python"
-" let g:ycm_python_binary_path = "~/.virtualenvs/py3-dev/bin/python"
+" let g:ycm_python_binary_path = "python"
+let g:ycm_python_binary_path = "~/.virtualenvs/py3-dev/bin/python"
 let g:ycm_min_num_of_chars_for_completion = 56
 let g:ycm_show_diagnostics_ui = 0
 " let g:ycm_key_invoke_completion = '<C-S-o>'
@@ -362,9 +404,7 @@ nnoremap <leader>yd :call GetYcmDebugFile()<CR>
 
 inoremap <C-S-o> <C-x><C-o>
 
-" dvc file syntax
-autocmd! BufNewFile,BufRead Dvcfile,*.dvc setfiletype yaml
-autocmd! BufNewFile,BufRead .tern-project setfiletype json
+
 
 if !exists("g:ycm_semantic_triggers")
     let g:ycm_semantic_triggers =  {
@@ -395,10 +435,9 @@ endif
 "" endfunction
 
 "UltiSnips config
+let g:UltiSnipsUsePythonVersion = 3
 let g:UltiSnipsListSnippets = "<c-l>"
 let g:UltiSnipsExpandTrigger="<c-j>"
-"let g:UltiSnipsJumpForwardTrigger="<c-j>"
-"let g:UltiSnipsJumpBackwardTrigger="<c-k>"
 let g:UltiSnipsSnippetDirectories=['~/.vim/UltiSnips/', 'UltiSnips']
 
 "languagetools config
@@ -463,7 +502,7 @@ noremap <leader>cq :cclose<CR>
 noremap <leader>ol :browse oldfiles<CR>
 noremap ]d :tabnext<CR>
 noremap <leader>oi :e ~/.vimrc<CR>
-noremap <leader>er :so ~/.vimrc<CR>
+noremap <leader>rl :so ~/.vimrc<CR>
 noremap ge :e <cfile><CR>
 
 "codi config
@@ -493,18 +532,18 @@ autocmd FileType mma setlocal commentstring=(*\ %s\ *)
 
 "----------indent and fold config----------------------
 set diffopt=filler,context:3,iwhite
-" setlocal et sta sw=4 sts=4 tabstop=4
 set et sw=4 sts=4 tabstop=4
-" set textwidth=80
-set textwidth=110
-" set autoindent
-" set smartindent
+set textwidth=80
+set autoindent
+set smartindent
 
+set foldmethod=manual
 " autocmd FileType cpp setlocal tabstop=4
 " autocmd FileType python setlocal foldmethod=indent
-set foldmethod=manual
 " autocmd FileType c setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*//'
 " autocmd FileType python setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*#'
+autocmd FileType configfile setlocal textwidth=0
+
 set matchpairs+=<:>
 " avoid make message prompt
 let g:bufferline_echo=0
@@ -520,12 +559,9 @@ autocmd FileType tex noremap <leader>wc :w !detex % \| wc<CR>
 noremap <leader>cf :Autoformat<CR>
 let g:formatters_java = ['astyle_java']
 let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-length=".(&textwidth).
-            \ "--indent-labels --indent-preproc-block --break-after-logical
+            \ " --indent-labels --indent-preproc-block --break-after-logical
             \ -pcH".(&expandtab ? "s".&shiftwidth : "t")'
-" let g:formatters_java = ['google_java']
-" let g:formatdef_google_java = "'java -jar ~/Applications/java_formatter.jar -
-"             \--skip-removing-unused-imports --aosp --skip-sorting-imports
-"             \--lines '.a:firstline.':'.a:lastline"
+"jformatter -r --lines 4:12 test.java"
 let g:formatters_cpp = ['clang_format']
 let g:formatdef_clang_format = "'clang-format -style=\"{BasedOnStyle: Google, IndentWidth: 4,
             \AlwaysBreakTemplateDeclarations: false, ColumnLimit: ".(&textwidth)."}\"
@@ -623,6 +659,7 @@ function! s:copy_results(lines)
     endif
     let @+ = joined_lines
 endfunction
+
 let g:fzf_action = {
             \ 'ctrl-t': 'tab split',
             \ 'ctrl-x': 'split',
@@ -633,6 +670,13 @@ let g:fzf_action = {
 " vim-markdown config
 let g:tex_conceal = ""
 let g:vim_markdown_math = 1
+
+" pencil markdown config, more config for writer see reedes/vim-pencil page
+augroup pencil
+  autocmd!
+  autocmd FileType markdown,mkd call pencil#init()
+  autocmd FileType text         call pencil#init()
+augroup END
 
 
 "----------this is running file config-------------
@@ -653,7 +697,7 @@ function! Generalmake()
     if index(['cpp', 'c', 'make', 'cmake'], &filetype) > -1
         let l:makefiles = ['CMakelists.txt', 'cmakelists.txt', 'makefile']
     elseif index(['java', 'groovy'], &filetype) > -1
-        let l:makefiles = ['build.gradle']
+        let l:makefiles = ['build.gradle', 'build.sh']
     elseif index(['javascript'], &filetype) > -1
         let l:makefiles = ['.tern-project']
     else
@@ -694,6 +738,19 @@ function! SwitchOrCreate()
     endif
 endfunction
 
+function! HtmlPreview()
+    silent execute "!nohup autoreload-server -w ./ --port 8000 &"
+    silent execute "!open 'http://localhost:8000/".shellescape(expand('%'))."\'"
+    redraw!
+endfunction
+
+function! Type2Js()
+    silent execute "!tsc %"
+    execute "!node %:r".".js"
+    silent execute "!rm %:r".".js"
+    redraw!
+endfunction
+
 
 nmap <leader>r :!%:p<CR>
 autocmd FileType vim nmap <leader>r :!vim -i NONE -u NONE -U NONE -V1 -nNesS % -c 'qall'<CR>
@@ -701,6 +758,7 @@ autocmd FileType python nmap <leader>r :!python %<CR>
 autocmd FileType python nmap <leader>tt :!python -m doctest -v %<CR>
 autocmd FileType python nmap <leader>ut :!python -m unittest -v %<CR>
 autocmd FileType lua nmap <leader>r :!th %<CR>
+autocmd FileType typescript nmap <leader>r :call Type2Js()<CR>
 autocmd FileType markdown nmap <leader>r <Plug>MarkdownPreviewToggle
 autocmd FileType html nmap <leader>r :call HtmlPreview()<CR>
 autocmd FileType sh nmap <leader>r :!bash %<CR>
@@ -713,6 +771,7 @@ autocmd FileType c nmap <leader>a :A<CR>
 
 " autocmd FileType cpp nmap <leader>r :!$(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
 autocmd FileType cpp nmap <leader>r :!g++ -std=c++11 % && $(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
+
 " jump to the previous function
 autocmd Filetype cpp nnoremap <silent> [m :call
             \ search('\(\(if\\|for\\|while\\|switch\\|catch\)\_s*\)\@64<!(\_[^)]*)\_[^;{}()]*\zs{', "bw")<CR>
@@ -778,8 +837,9 @@ noremap <leader>tc :call Capatalize()<CR>
 xnoremap <leader>m :<c-h><c-h><c-h><c-h><c-h>call Mathpipe2()<CR>
 xnoremap <leader>M :<c-h><c-h><c-h><c-h><c-h>call Mathpipe1()<CR>
 noremap ,cf :let @+=expand("%:p")<CR>
-map ,cp :r!ssh iapple "xclip -o"<CR>
-map ,cy :w !xclip<CR>
+" map ,cp :r!ssh iapple "xclip -o"<CR>
+" map ,cy :w !xclip<CR>
+map ,cy :w !pbcopy<CR>
 
 vnoremap <leader>en :!python -c 'import sys,urllib;print urllib.quote(sys.stdin.read().strip())'<cr>
 vnoremap <leader>de :!python -c 'import sys,urllib;print urllib.unquote(sys.stdin.read().strip())'<cr>
