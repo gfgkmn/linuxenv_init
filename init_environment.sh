@@ -79,6 +79,9 @@ fi
 if [[ ! -f ~/Application/bin/fasd ]]; then
 	cp fasd ~/Application/bin/
 fi
+if [[ ! -f ~/Application/bin/z.sh ]]; then
+	cp z.sh ~/Application/bin/
+fi
 if [[ ! -f ~/Application/bin/pbcopy ]]; then
 	cp pbcopy ~/Application/bin/
 fi
