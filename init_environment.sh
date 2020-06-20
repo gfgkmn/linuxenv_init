@@ -10,15 +10,12 @@ then
 	sudo yum install mutt msmtp
 	sudo yum install xclip
 else
-	sudo apt-get install build-essential cmake
-	sudo apt-get install python-dev python3-dev
-    sudo apt-get install libjansson-dev # ctags needs json
-	sudo apt-get install mutt msmtp
-	sudo apt-get install xclip
-    sudo apt-get install silversearcher-ag
-    # sudo add-apt-repository ppa:hnakamur/universal-ctags
-    # sudo apt-get install universal-ctags
-    sudo apt-get install gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
+	sudo apt-get install -y build-essential cmake
+	sudo apt-get install -y python-dev python3-dev
+    sudo apt-get install -y libjansson-dev # ctags needs json
+	sudo apt-get install -y mutt msmtp jq
+    sudo apt-get install -y silversearcher-ag
+    sudo apt-get install -y gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
 
 fi
 
