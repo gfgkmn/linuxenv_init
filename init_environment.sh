@@ -10,15 +10,12 @@ then
 	sudo yum install mutt msmtp
 	sudo yum install xclip
 else
-	sudo apt-get install build-essential cmake
-	sudo apt-get install python-dev python3-dev
-    sudo apt-get install libjansson-dev # ctags needs json
-	sudo apt-get install mutt msmtp
-	sudo apt-get install xclip
-    sudo apt-get install silversearcher-ag
-    # sudo add-apt-repository ppa:hnakamur/universal-ctags
-    # sudo apt-get install universal-ctags
-    sudo apt-get install gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
+	sudo apt-get install -y build-essential cmake
+	sudo apt-get install -y python-dev python3-dev
+    sudo apt-get install -y libjansson-dev # ctags needs json
+	sudo apt-get install -y mutt msmtp jq
+    sudo apt-get install -y silversearcher-ag
+    sudo apt-get install -y gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
 
 fi
 
@@ -79,6 +76,12 @@ fi
 if [[ ! -f ~/Application/bin/fasd ]]; then
 	cp fasd ~/Application/bin/
 fi
+if [[ ! -f ~/Application/bin/imgcat]]; then
+	cp imgcat ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/z.sh ]]; then
+	cp z.sh ~/Application/bin/
+fi
 if [[ ! -f ~/Application/bin/pbcopy ]]; then
 	cp pbcopy ~/Application/bin/
 fi
@@ -90,9 +93,7 @@ fi
 ssh-keygen -t rsa -N ''
 
 cat >> ~/.ssh/authorized_keys << eof
-ssh-rsa
-AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw==
-gfgkmn@gmail.com
+ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw== gfgkmn@gmail.com
 eof
 
 chmod 600 ~/.ssh/authorized_keys
@@ -108,6 +109,6 @@ git config --global user.name "yuhe"
 git clone git@github.com:universal-ctags/ctags.git
 cd ctags
 ./autogen.sh
-./configure --prefix=~/Application --enable-json # defaults to /usr/local
+./configure --prefix=/home/yuhe/Application --enable-json # defaults to /usr/local
 make
 make install # may require extra privileges depending on where to install
