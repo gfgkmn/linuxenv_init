@@ -1,5 +1,5 @@
-source $VIMRUNTIME/vimrc_example.vim
-"source $VIMRUNTIME/mswin.vim
+" source $VIMRUNTIME/vimrc_example.vim
+" source $VIMRUNTIME/mswin.vim
 "behave mswin
 
 set nocompatible              " be iMproved, required
@@ -9,10 +9,15 @@ filetype off                  " required
 set rtp+=~/.vim/vundles/vim-plug
 " alternatively, pass a path where Vundle should install plugins
 set backup
+set undofile
 set display=lastline
 set showcmd
 set backupdir=~/.vimbakfiles/
 set undodir=~/.vimbakfiles/undofiles/
+if has('mac')
+    set termwinsize=15x0
+    set splitbelow
+endif
 " set path+=/usr/local/Cellar/llvm/6.0.0/include/c++/v1
 set exrc
 set secure
@@ -40,6 +45,11 @@ if has("gui_macvim")
 endif
 " }
 
+source $VIMRUNTIME/defaults.vim
+if &t_Co > 2 || has("gui_running")
+  " Switch on highlighting the last used search pattern.
+  set hlsearch
+endif
 
 " dvc file syntax
 autocmd! BufNewFile,BufRead Dvcfile,*.dvc setfiletype yaml
@@ -95,6 +105,8 @@ Plug 'dpelle/vim-LanguageTool'
 Plug 'vim-scripts/matchit.zip'
 Plug 'mbbill/undotree'
 Plug 'tpope/vim-fugitive'
+Plug 'junegunn/gv.vim'
+Plug 'sodapopcan/vim-twiggy'
 " Plug 'mhinz/vim-signify'
 Plug 'airblade/vim-gitgutter'
 Plug 'honza/vim-snippets'
@@ -108,10 +120,7 @@ Plug 'sgur/vim-textobj-parameter'
 Plug 'glts/vim-textobj-comment'
 Plug 'Julian/vim-textobj-variable-segment'
 Plug 'rizzatti/dash.vim'
-Plug 'kien/ctrlp.vim'
 Plug 'gfgkmn/bufexplorer'
-Plug 'scrooloose/nerdtree'
-Plug 'Xuyuanp/nerdtree-git-plugin'
 Plug 'mhinz/vim-startify'
 Plug 'liuchengxu/vista.vim'
 Plug 'terryma/vim-expand-region'
@@ -123,7 +132,7 @@ Plug 'kshenoy/vim-signature'
 Plug 'tpope/vim-unimpaired'
 Plug 'gfgkmn/web_search'
 Plug 'mhinz/vim-grepper'
-Plug '/usr/local/opt/fzf'
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'vim-scripts/WhereFrom'
 Plug 'godlygeek/tabular'
@@ -139,7 +148,7 @@ Plug 'w0rp/ale'
 Plug 'Chiel92/vim-autoformat'
 Plug 'metakirby5/codi.vim'
 Plug 'johngrib/vim-mac-dictionary'
-if v:version >= 800
+if v:version >= 801
     " Plugin goes here.
     Plug 'mg979/vim-visual-multi'
     Plug 'vim-scripts/VimRepress'
@@ -149,6 +158,14 @@ Plug 'jceb/vim-orgmode'
 Plug 'tpope/vim-speeddating'
 
 Plug 'Shougo/vimproc.vim', {'for': ['c', 'cpp', 'cmake', 'typescript'], 'do': 'make'}
+if has('nvim')
+    Plug 'Shougo/defx.nvim', { 'do': ':UpdateRemotePlugins' }
+else
+    Plug 'kristijanhusak/defx-git'
+    Plug 'Shougo/defx.nvim'
+    Plug 'roxma/nvim-yarp'
+    Plug 'roxma/vim-hug-neovim-rpc'
+endif
 
 Plug 'vim-scripts/CCTree', {'for':['c', 'cpp']}
 Plug 'vim-scripts/a.vim', {'for': ['c', 'cpp']}
@@ -164,11 +181,13 @@ Plug 'alvan/vim-closetag', {'for': ['html', 'css', 'xhtml', 'xml']}
 Plug 'mattn/emmet-vim', {'for': ['html', 'css', 'xhtml', 'xml', 'mason']}
 Plug 'whatyouhide/vim-textobj-xmlattr', {'for': ['html', 'css', 'xhtml', 'xml']}
 
-Plug 'voldikss/vim-mma', {'for': 'mma'}
-Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins', 'for': 'mma'}
+Plug 'rsmenon/vim-mathematica'
+
+Plug 'jalvesaq/Nvim-R', {'for': ['R']}
+
+Plug 'Rykka/riv.vim', {'for': 'rst'}
 
 Plug 'plasticboy/vim-markdown', {'for': 'markdown'}
-Plug 'reedes/vim-pencil', {'for': 'markdown'}
 Plug 'iamcco/markdown-preview.nvim', {'for': 'markdown', 'do': 'cd app & yarn install'}
 
 Plug 'guns/vim-clojure-static', {'for': 'clojure'}
@@ -221,7 +240,9 @@ set foldlevel=100
 set scrolloff=0
 set scs
 hi normal guibg=#153948 guifg=white
-" set guifont=Monaco:h13
+if has('mac')
+    set guifont=Monaco:h13
+endif
 set number
 set relativenumber
 set ignorecase
@@ -268,7 +289,8 @@ let g:vista#renderer#icons = {
 \   "map": "◆",
 \   "class": "✦",
 \   "member": "⦿",
-\   "namespace": "❥"
+\   "namespace": "❥",
+\   "method": "✺"
 \  }
 map \tg :Vista!!<CR>
 
@@ -300,8 +322,20 @@ if exists("loaded_matchit")
                 \ '\<specify\>:\<endspecify\>'
 endif
 
+function! HideOrPass()
+    if winnr() > 1
+        hide
+    endif
+    if bufwinnr('defx') > 0
+        execute "bdelete " . bufnr('defx')
+    endif
+    if exists('t:twiggy_bufnr')
+        :Twiggy
+    endif
+endfunction
+
 " close them all
-map <leader>ca :NERDTreeClose <bar> cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> Vista!<CR>
+map <leader>ca :cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> Vista! <bar> :call HideOrPass()<CR>
 map <leader>ci :only<CR>
 
 " yankstack config
@@ -309,13 +343,79 @@ nmap <leader>p <Plug>yankstack_substitute_older_paste
 nmap <leader>P <Plug>yankstack_substitute_newer_paste
 set pastetoggle=<F2>
 
-" NerdTree's keymappint
-if !hasmapto(':NERDTreeToggle')
-    map \nt :NERDTreeToggle<CR>
-    map \nr :NERDTreeFind<CR>
+call defx#custom#option('_', {
+            \ 'columns': 'indent:git:icons:filename',
+            \ 'winwidth': 40,
+            \ 'split': 'vertical',
+            \ 'direction': 'topleft',
+            \ 'show_ignored_files': 0,
+            \ 'listed': 1,
+            \ 'buffer_name': 'NERD_tree_1',
+            \ 'root_marker': '▶︎ ',
+            \ 'toggle': 1,
+            \ 'resume': 1,
+            \ 'ignored_files':
+            \     '.mypy_cache,.pytest_cache,.git,.hg,.svn,.stversions'
+            \   . ',__pycache__,.sass-cache,*.egg-info,.DS_Store,*.pyc,*.swp'
+            \ })
+ 
+map <silent> <leader>nt :Defx<CR>
+nnoremap <silent> <Leader>nr :<C-u>Defx -resume -buffer-name=tab`tabpagenr()` -search=`expand('%:p')`<CR>
+" Avoid the white space highting issue
+autocmd FileType defx match ExtraWhitespace /^^/
+" Keymap in defx
+autocmd FileType defx call s:defx_my_settings()
+
+function! s:defx_my_settings() abort
+  IndentLinesDisable
+  setl nospell
+  setl signcolumn=no
+  setl nonumber
+  nnoremap <silent><buffer><expr> <CR> defx#is_directory() ? defx#do_action('open_or_close_tree') : defx#do_action('drop',)
+  nnoremap <silent><buffer><expr> s defx#do_action('drop', 'split')
+  nnoremap <silent><buffer><expr> v defx#do_action('drop', 'vsplit')
+  nnoremap <silent><buffer><expr> t defx#do_action('drop', 'tabe')
+  nnoremap <silent><buffer><expr> o defx#do_action('open_tree')
+  nnoremap <silent><buffer><expr> O defx#do_action('open_tree_recursive')
+  nnoremap <silent><buffer><expr> C defx#do_action('copy')
+  nnoremap <silent><buffer><expr> P defx#do_action('paste')
+  nnoremap <silent><buffer><expr> M defx#do_action('rename')
+  nnoremap <silent><buffer><expr> D defx#do_action('remove_trash')
+  nnoremap <silent><buffer><expr> A defx#do_action('new_multiple_files')
+  nnoremap <silent><buffer><expr> - defx#do_action('cd', ['..'])
+  nnoremap <silent><buffer><expr> . defx#do_action('toggle_ignored_files')
+  nnoremap <silent><buffer><expr> <Space> defx#do_action('toggle_select')
+  nnoremap <silent><buffer><expr> R defx#do_action('redraw')
+endfunction
+
+" Defx git
+let g:defx_git#indicators = { 'Modified'  : '✹', 'Staged'    : '✚',
+            \ 'Untracked' : '✭', 'Renamed'   : '➜',
+            \ 'Unmerged'  : '═', 'Ignored'   : '☒',
+            \ 'Deleted'   : '✖', 'Unknown'   : '?' }
+let g:defx_git#column_length = 0
+hi def link Defx_filename_directory NERDTreeDirSlash
+hi def link Defx_git_Modified Special
+hi def link Defx_git_Staged Function
+hi def link Defx_git_Renamed Title
+hi def link Defx_git_Unmerged Label
+hi def link Defx_git_Untracked Tag
+hi def link Defx_git_Ignored Comment
+
+" Defx icons
+" Requires nerd-font, install at https://github.com/ryanoasis/nerd-fonts or
+" brew cask install font-hack-nerd-font
+" Then set non-ascii font to Driod sans mono for powerline in iTerm2
+Plug 'kristijanhusak/defx-icons'
+" disbale syntax highlighting to prevent performence issue
+let g:defx_icons_enable_syntax_highlight = 1
+
+
+" Twiggy's config
+if !hasmapto(':Twiggy')
+    map \gm :Twiggy<CR>
 endif
 
-let g:NERDTreeSortOrder = ['\/$', '*','\.swp$',  '\.bak$', '\~$', '[[-timestamp]]']
 
 " dash's keymapping
 if !hasmapto(':DashSearch')
@@ -326,14 +426,16 @@ endif
 let g:web_search_use_default_mapping = "yes"
 let g:web_search_engine = "google"
 let g:web_search_command = "open"
-nnoremap <leader>se :WebSearch<CR>
+nnoremap <leader>se :WebSearchVisual<CR>
 
 " dict's keymapping
 nnoremap <leader>ds :MacDictWord<CR>
 nnoremap <leader>dr :MacDictQuery<CR>
 " shows the raw string from the dictionary
 " let g:vim_mac_dictionary_use_format = 0
-" let g:vim_mac_dictionary_use_app = 1
+if has('mac')
+    let g:vim_mac_dictionary_use_app = 1
+endif
 
 "Gundo's keymapping
 if !hasmapto(':UndotreeToggle')
@@ -355,11 +457,19 @@ endif
 "nnoremap <leader>hr :SignifyRefresh<CR>
 "nnoremap <leader>hs :Gwrite<CR>
 set updatetime=200
+
 "gitgutter refresh
 map \tr :GitGutterAll<CR>
 map \ga :GitGutterToggle<CR>
 let g:gitgutter_enabled = 1
 let g:gitgutter_max_signs = 2000
+" let g:gitgutter_map_keys = 0
+let g:gitgutter_override_sign_column_highlight = 0
+highlight clear SignColumn
+highlight GitGutterAdd ctermfg=2
+highlight GitGutterChange ctermfg=3
+highlight GitGutterDelete ctermfg=1
+highlight GitGutterChangeDelete ctermfg=4
 
 " autopair config
 " disable autpopair
@@ -374,7 +484,9 @@ imap <C-d>b <M-b>
 """youCompleteMe's config
 let g:ycm_complete_in_comments = 1
 " let g:ycm_python_binary_path = "python"
-let g:ycm_python_binary_path = "~/.virtualenvs/py3-dev/bin/python"
+let g:ycm_auto_trigger = 0
+let g:ycm_auto_hover = ''
+" let g:ycm_python_binary_path = "~/.virtualenvs/py3-dev/bin/python"
 let g:ycm_min_num_of_chars_for_completion = 56
 let g:ycm_show_diagnostics_ui = 0
 " let g:ycm_key_invoke_completion = '<C-S-o>'
@@ -403,6 +515,25 @@ nnoremap <leader>gp :YcmCompleter GetType<CR>
 nnoremap <leader>yd :call GetYcmDebugFile()<CR>
 
 inoremap <C-S-o> <C-x><C-o>
+
+" Kite deep learning complete
+" let g:kite_auto_complete=1
+" let g:kite_tab_complete=1
+" set completeopt-=menu
+" set completeopt+=menuone   " Show the completions UI even with only 1 item
+" set completeopt-=longest   " Don't insert the longest common text
+" set completeopt-=preview   " Hide the documentation preview window
+" set completeopt+=noinsert  " Don't insert text automatically
+" set completeopt-=noselect  " Highlight the first completion automatically
+" set completeopt=menuone,noinsert
+" set statusline=%<%f\ %h%m%r%{kite#statusline()}%=%-14.(%l,%c%V%)\ %P
+" set laststatus=2
+
+"mirrorconfig
+nmap <leader>pu :MirrorPull<CR>
+nmap <leader>gp :MirrorPush<CR>
+nmap <leader>md :MirrorDiff<CR>
+
 
 
 
@@ -438,6 +569,8 @@ endif
 let g:UltiSnipsUsePythonVersion = 3
 let g:UltiSnipsListSnippets = "<c-l>"
 let g:UltiSnipsExpandTrigger="<c-j>"
+"let g:UltiSnipsJumpForwardTrigger="<c-j>"
+"let g:UltiSnipsJumpBackwardTrigger="<c-k>"
 let g:UltiSnipsSnippetDirectories=['~/.vim/UltiSnips/', 'UltiSnips']
 
 "languagetools config
@@ -502,7 +635,7 @@ noremap <leader>cq :cclose<CR>
 noremap <leader>ol :browse oldfiles<CR>
 noremap ]d :tabnext<CR>
 noremap <leader>oi :e ~/.vimrc<CR>
-noremap <leader>rl :so ~/.vimrc<CR>
+noremap <leader>er :so ~/.vimrc<CR>
 noremap ge :e <cfile><CR>
 
 "codi config
@@ -533,17 +666,13 @@ autocmd FileType mma setlocal commentstring=(*\ %s\ *)
 "----------indent and fold config----------------------
 set diffopt=filler,context:3,iwhite
 set et sw=4 sts=4 tabstop=4
-set textwidth=80
-set autoindent
-set smartindent
+" set textwidth=110
 
-set foldmethod=manual
 " autocmd FileType cpp setlocal tabstop=4
 " autocmd FileType python setlocal foldmethod=indent
+set foldmethod=manual
 " autocmd FileType c setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*//'
 " autocmd FileType python setlocal foldmethod=expr foldexpr=getline(v:lnum)=~'^\s*#'
-autocmd FileType configfile setlocal textwidth=0
-
 set matchpairs+=<:>
 " avoid make message prompt
 let g:bufferline_echo=0
@@ -559,9 +688,12 @@ autocmd FileType tex noremap <leader>wc :w !detex % \| wc<CR>
 noremap <leader>cf :Autoformat<CR>
 let g:formatters_java = ['astyle_java']
 let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-length=".(&textwidth).
-            \ " --indent-labels --indent-preproc-block --break-after-logical
+            \ "--indent-labels --indent-preproc-block --break-after-logical
             \ -pcH".(&expandtab ? "s".&shiftwidth : "t")'
-"jformatter -r --lines 4:12 test.java"
+" let g:formatters_java = ['google_java']
+" let g:formatdef_google_java = "'java -jar ~/Applications/java_formatter.jar -
+"             \--skip-removing-unused-imports --aosp --skip-sorting-imports
+"             \--lines '.a:firstline.':'.a:lastline"
 let g:formatters_cpp = ['clang_format']
 let g:formatdef_clang_format = "'clang-format -style=\"{BasedOnStyle: Google, IndentWidth: 4,
             \AlwaysBreakTemplateDeclarations: false, ColumnLimit: ".(&textwidth)."}\"
@@ -596,7 +728,7 @@ command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
 "             \ 'options' : '-m --prompt "Spotlight> "'
 "             \ }))
 nnoremap <leader>mf :FzfSpotlight<Space>
-
+nnoremap <c-p> :Files<CR>
 
 " need to improve it
 " function! ReformatMultiLines()
@@ -659,7 +791,6 @@ function! s:copy_results(lines)
     endif
     let @+ = joined_lines
 endfunction
-
 let g:fzf_action = {
             \ 'ctrl-t': 'tab split',
             \ 'ctrl-x': 'split',
@@ -670,13 +801,6 @@ let g:fzf_action = {
 " vim-markdown config
 let g:tex_conceal = ""
 let g:vim_markdown_math = 1
-
-" pencil markdown config, more config for writer see reedes/vim-pencil page
-augroup pencil
-  autocmd!
-  autocmd FileType markdown,mkd call pencil#init()
-  autocmd FileType text         call pencil#init()
-augroup END
 
 
 "----------this is running file config-------------
@@ -753,15 +877,16 @@ endfunction
 
 
 nmap <leader>r :!%:p<CR>
-autocmd FileType vim nmap <leader>r :!vim -i NONE -u NONE -U NONE -V1 -nNesS % -c 'qall'<CR>
-autocmd FileType python nmap <leader>r :!python %<CR>
-autocmd FileType python nmap <leader>tt :!python -m doctest -v %<CR>
-autocmd FileType python nmap <leader>ut :!python -m unittest -v %<CR>
+autocmd BufEnter *.vim nmap <leader>r :!vim -i NONE -u NONE -U NONE -V1 -nNesS % -c 'qall'<CR>
+autocmd BufEnter *.py nmap <leader>r :term python %<CR>
+autocmd BufEnter *.py nmap <leader>tt :!python -m doctest -v %<CR>
+autocmd BufEnter *.py nmap <leader>ut :!python -m unittest -v %<CR>
 autocmd FileType lua nmap <leader>r :!th %<CR>
-autocmd FileType typescript nmap <leader>r :call Type2Js()<CR>
-autocmd FileType markdown nmap <leader>r <Plug>MarkdownPreviewToggle
-autocmd FileType html nmap <leader>r :call HtmlPreview()<CR>
-autocmd FileType sh nmap <leader>r :!bash %<CR>
+autocmd BufEnter *.md nmap <leader>r <Plug>MarkdownPreviewToggle
+autocmd BufEnter *.ts nmap <leader>r :call Type2Js()<CR>
+autocmd BufEnter *.rst nmap <leader>r :Riv2HtmlAndBrowse<CR>
+autocmd BufEnter *.html nmap <leader>r :call HtmlPreview()<CR>
+autocmd BufEnter *.sh nmap <leader>r :!bash %<CR>
 autocmd FileType java nmap <leader>r :!javac % && java %:t:r<CR>
 autocmd FileType mma nmap <leader>r :!wolframscript -script %<CR>
 autocmd FileType groovy compiler gradle
@@ -769,9 +894,10 @@ autocmd FileType java compiler gradle
 autocmd FileType cpp nmap <leader>a :A<CR>
 autocmd FileType c nmap <leader>a :A<CR>
 
+nnoremap <leader>gv :vertical rightbelow wincmd f<CR>
+
 " autocmd FileType cpp nmap <leader>r :!$(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
 autocmd FileType cpp nmap <leader>r :!g++ -std=c++11 % && $(gfind -maxdepth 3 -executable -type f -not -path '*/CMakeFiles/*')<CR>
-
 " jump to the previous function
 autocmd Filetype cpp nnoremap <silent> [m :call
             \ search('\(\(if\\|for\\|while\\|switch\\|catch\)\_s*\)\@64<!(\_[^)]*)\_[^;{}()]*\zs{', "bw")<CR>
@@ -837,8 +963,6 @@ noremap <leader>tc :call Capatalize()<CR>
 xnoremap <leader>m :<c-h><c-h><c-h><c-h><c-h>call Mathpipe2()<CR>
 xnoremap <leader>M :<c-h><c-h><c-h><c-h><c-h>call Mathpipe1()<CR>
 noremap ,cf :let @+=expand("%:p")<CR>
-" map ,cp :r!ssh iapple "xclip -o"<CR>
-" map ,cy :w !xclip<CR>
 map ,cy :w !pbcopy<CR>
 
 vnoremap <leader>en :!python -c 'import sys,urllib;print urllib.quote(sys.stdin.read().strip())'<cr>
