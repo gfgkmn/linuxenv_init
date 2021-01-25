@@ -170,7 +170,8 @@ endif
 Plug 'vim-scripts/CCTree', {'for':['c', 'cpp']}
 Plug 'vim-scripts/a.vim', {'for': ['c', 'cpp']}
 Plug 'richq/vim-cmake-completion', {'for': 'cmake'}
-Plug 'vhdirk/vim-cmake', {'for': ['cmake', 'c', 'cpp']}
+" Plug 'vhdirk/vim-cmake', {'for': ['cmake', 'c', 'cpp']}
+Plug 'cdelledonne/vim-cmake', {'for': ['cmake', 'c', 'cpp']}
 " Plug 'idanarye/vim-vebugger', {'for': ['cmake', 'c', 'cpp']}
 " Plug 'libclang-vim/libclang-vim', {'do': './autogen.sh && make', 'for':['c', 'cpp']}
 
@@ -290,7 +291,8 @@ let g:vista#renderer#icons = {
 \   "class": "✦",
 \   "member": "⦿",
 \   "namespace": "❥",
-\   "method": "✺"
+\   "method": "✺",
+\   "struct": "▲"
 \  }
 map \tg :Vista!!<CR>
 
@@ -717,18 +719,21 @@ let g:autoformat_remove_trailing_spaces = 0
 let verbose=1
 
 " open file from anywhere config
-" Search spotlight {{{2
-command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
-            \ 'source'  : 'mdfind -onlyin ~ <q-args>',
-            \ 'options' : '-m --prompt "Spotlight> "'
-            \ }))
-" tocreate: how to config locate 
-" command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
-"             \ 'source'  : 'locate <q-args>',
-"             \ 'options' : '-m --prompt "Spotlight> "'
-"             \ }))
+let g:fzf_layout = { 'window': { 'width': 1, 'height': 1} }
+if has('mac')
+    command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
+                \ 'source'  : 'mdfind -onlyin ~ <q-args>',
+                \ 'options' : '-m --prompt "Spotlight> "'
+                \ }))
+else
+    command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
+                \ 'source'  : 'locate <q-args>',
+                \ 'options' : '-m --prompt "Spotlight> "'
+                \ }))
+endif
 nnoremap <leader>mf :FzfSpotlight<Space>
 nnoremap <c-p> :Files<CR>
+noremap <leader>v :History<CR>
 
 " need to improve it
 " function! ReformatMultiLines()
@@ -816,10 +821,10 @@ function! GetErrorNum()
 endfunction
 
 function! Generalmake()
-    let l:make2command = {'CMakelists': ":CMake && :make", "makefile":":make",
+    let l:make2command = {'cmakelists.txt': ":CMakeGenerate! && :make", "makefile":":make",
                 \ "build.gradle":":make", "build.sh":":!bash build.sh"}
     if index(['cpp', 'c', 'make', 'cmake'], &filetype) > -1
-        let l:makefiles = ['CMakelists.txt', 'cmakelists.txt', 'makefile']
+        let l:makefiles = ['CMakelists.txt', 'CMakeLists.txt', 'cmakelists.txt', 'makefile', 'MakeFile']
     elseif index(['java', 'groovy'], &filetype) > -1
         let l:makefiles = ['build.gradle', 'build.sh']
     elseif index(['javascript'], &filetype) > -1
@@ -833,7 +838,7 @@ function! Generalmake()
     for l:mkfile in l:makefiles
         if filereadable(l:mkfile)
             let l:nomkfile = 0
-            execute l:make2command[l:mkfile]
+            execute l:make2command[tolower(l:mkfile)]
             if GetErrorNum() > 0
                 :redraw!
                 :copen
