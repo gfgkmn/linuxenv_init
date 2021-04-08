@@ -76,7 +76,7 @@ fi
 if [[ ! -f ~/Application/bin/fasd ]]; then
 	cp fasd ~/Application/bin/
 fi
-if [[ ! -f ~/Application/bin/imgcat]]; then
+if [[ ! -f ~/Application/bin/imgcat ]]; then
 	cp imgcat ~/Application/bin/
 fi
 if [[ ! -f ~/Application/bin/z.sh ]]; then
