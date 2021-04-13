@@ -158,7 +158,11 @@ Plug 'jceb/vim-orgmode'
 Plug 'tpope/vim-speeddating'
 
 Plug 'Shougo/vimproc.vim', {'for': ['c', 'cpp', 'cmake', 'typescript'], 'do': 'make'}
-if has('nvim')
+
+if has('linux')
+    Plug 'scrooloose/nerdtree'
+    Plug 'Xuyuanp/nerdtree-git-plugin'
+elseif has('nvim')
     Plug 'Shougo/defx.nvim', { 'do': ':UpdateRemotePlugins' }
 else
     Plug 'kristijanhusak/defx-git'
@@ -337,7 +341,12 @@ function! HideOrPass()
 endfunction
 
 " close them all
-map <leader>ca :cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> Vista! <bar> :call HideOrPass()<CR>
+if has('mac')
+    map <leader>ca :cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> Vista! <bar> :call HideOrPass()<CR>
+else
+    map <leader>ca :NERDTreeClose <bar> cclose <bar> pclose <bar> lclose <bar> nohl <bar> UndotreeHide <bar> Vista!<CR>
+endif
+
 map <leader>ci :only<CR>
 
 " yankstack config
@@ -345,73 +354,80 @@ nmap <leader>p <Plug>yankstack_substitute_older_paste
 nmap <leader>P <Plug>yankstack_substitute_newer_paste
 set pastetoggle=<F2>
 
-call defx#custom#option('_', {
-            \ 'columns': 'indent:git:icons:filename',
-            \ 'winwidth': 40,
-            \ 'split': 'vertical',
-            \ 'direction': 'topleft',
-            \ 'show_ignored_files': 0,
-            \ 'listed': 1,
-            \ 'buffer_name': 'NERD_tree_1',
-            \ 'root_marker': '▶︎ ',
-            \ 'toggle': 1,
-            \ 'resume': 1,
-            \ 'ignored_files':
-            \     '.mypy_cache,.pytest_cache,.git,.hg,.svn,.stversions'
-            \   . ',__pycache__,.sass-cache,*.egg-info,.DS_Store,*.pyc,*.swp'
-            \ })
- 
-map <silent> <leader>nt :Defx<CR>
-nnoremap <silent> <Leader>nr :<C-u>Defx -resume -buffer-name=tab`tabpagenr()` -search=`expand('%:p')`<CR>
-" Avoid the white space highting issue
-autocmd FileType defx match ExtraWhitespace /^^/
-" Keymap in defx
-autocmd FileType defx call s:defx_my_settings()
+if has('linux')
+    if !hasmapto(':NERDTreeToggle')
+        map \nt :NERDTreeToggle<CR>
+        map \nr :NERDTreeFind<CR>
+    endif
+    let g:NERDTreeSortOrder = ['\/$', '*','\.swp$',  '\.bak$', '\~$', '[[-timestamp]]']
+else
+    call defx#custom#option('_', {
+                \ 'columns': 'indent:git:icons:filename',
+                \ 'winwidth': 40,
+                \ 'split': 'vertical',
+                \ 'direction': 'topleft',
+                \ 'show_ignored_files': 0,
+                \ 'listed': 1,
+                \ 'buffer_name': 'NERD_tree_1',
+                \ 'root_marker': '▶︎ ',
+                \ 'toggle': 1,
+                \ 'resume': 1,
+                \ 'ignored_files':
+                \     '.mypy_cache,.pytest_cache,.git,.hg,.svn,.stversions'
+                \   . ',__pycache__,.sass-cache,*.egg-info,.DS_Store,*.pyc,*.swp'
+                \ })
+     
+    map <silent> <leader>nt :Defx<CR>
+    nnoremap <silent> <Leader>nr :<C-u>Defx -resume -buffer-name=tab`tabpagenr()` -search=`expand('%:p')`<CR>
+    " Avoid the white space highting issue
+    autocmd FileType defx match ExtraWhitespace /^^/
+    " Keymap in defx
+    autocmd FileType defx call s:defx_my_settings()
 
-function! s:defx_my_settings() abort
-  IndentLinesDisable
-  setl nospell
-  setl signcolumn=no
-  setl nonumber
-  nnoremap <silent><buffer><expr> <CR> defx#is_directory() ? defx#do_action('open_or_close_tree') : defx#do_action('drop',)
-  nnoremap <silent><buffer><expr> s defx#do_action('drop', 'split')
-  nnoremap <silent><buffer><expr> v defx#do_action('drop', 'vsplit')
-  nnoremap <silent><buffer><expr> t defx#do_action('drop', 'tabe')
-  nnoremap <silent><buffer><expr> o defx#do_action('open_tree')
-  nnoremap <silent><buffer><expr> O defx#do_action('open_tree_recursive')
-  nnoremap <silent><buffer><expr> C defx#do_action('copy')
-  nnoremap <silent><buffer><expr> P defx#do_action('paste')
-  nnoremap <silent><buffer><expr> M defx#do_action('rename')
-  nnoremap <silent><buffer><expr> D defx#do_action('remove_trash')
-  nnoremap <silent><buffer><expr> A defx#do_action('new_multiple_files')
-  nnoremap <silent><buffer><expr> - defx#do_action('cd', ['..'])
-  nnoremap <silent><buffer><expr> . defx#do_action('toggle_ignored_files')
-  nnoremap <silent><buffer><expr> <Space> defx#do_action('toggle_select')
-  nnoremap <silent><buffer><expr> R defx#do_action('redraw')
-endfunction
+    function! s:defx_my_settings() abort
+      IndentLinesDisable
+      setl nospell
+      setl signcolumn=no
+      setl nonumber
+      nnoremap <silent><buffer><expr> <CR> defx#is_directory() ? defx#do_action('open_or_close_tree') : defx#do_action('drop',)
+      nnoremap <silent><buffer><expr> s defx#do_action('drop', 'split')
+      nnoremap <silent><buffer><expr> v defx#do_action('drop', 'vsplit')
+      nnoremap <silent><buffer><expr> t defx#do_action('drop', 'tabe')
+      nnoremap <silent><buffer><expr> o defx#do_action('open_tree')
+      nnoremap <silent><buffer><expr> O defx#do_action('open_tree_recursive')
+      nnoremap <silent><buffer><expr> C defx#do_action('copy')
+      nnoremap <silent><buffer><expr> P defx#do_action('paste')
+      nnoremap <silent><buffer><expr> M defx#do_action('rename')
+      nnoremap <silent><buffer><expr> D defx#do_action('remove_trash')
+      nnoremap <silent><buffer><expr> A defx#do_action('new_multiple_files')
+      nnoremap <silent><buffer><expr> - defx#do_action('cd', ['..'])
+      nnoremap <silent><buffer><expr> . defx#do_action('toggle_ignored_files')
+      nnoremap <silent><buffer><expr> <Space> defx#do_action('toggle_select')
+      nnoremap <silent><buffer><expr> R defx#do_action('redraw')
+    endfunction
 
-" Defx git
-let g:defx_git#indicators = { 'Modified'  : '✹', 'Staged'    : '✚',
-            \ 'Untracked' : '✭', 'Renamed'   : '➜',
-            \ 'Unmerged'  : '═', 'Ignored'   : '☒',
-            \ 'Deleted'   : '✖', 'Unknown'   : '?' }
-let g:defx_git#column_length = 0
-hi def link Defx_filename_directory NERDTreeDirSlash
-hi def link Defx_git_Modified Special
-hi def link Defx_git_Staged Function
-hi def link Defx_git_Renamed Title
-hi def link Defx_git_Unmerged Label
-hi def link Defx_git_Untracked Tag
-hi def link Defx_git_Ignored Comment
+    " Defx git
+    let g:defx_git#indicators = { 'Modified'  : '✹', 'Staged'    : '✚',
+                \ 'Untracked' : '✭', 'Renamed'   : '➜',
+                \ 'Unmerged'  : '═', 'Ignored'   : '☒',
+                \ 'Deleted'   : '✖', 'Unknown'   : '?' }
+    let g:defx_git#column_length = 0
+    hi def link Defx_filename_directory NERDTreeDirSlash
+    hi def link Defx_git_Modified Special
+    hi def link Defx_git_Staged Function
+    hi def link Defx_git_Renamed Title
+    hi def link Defx_git_Unmerged Label
+    hi def link Defx_git_Untracked Tag
+    hi def link Defx_git_Ignored Comment
 
-" Defx icons
-" Requires nerd-font, install at https://github.com/ryanoasis/nerd-fonts or
-" brew cask install font-hack-nerd-font
-" Then set non-ascii font to Driod sans mono for powerline in iTerm2
-Plug 'kristijanhusak/defx-icons'
-" disbale syntax highlighting to prevent performence issue
-let g:defx_icons_enable_syntax_highlight = 1
-
+    " Defx icons
+    " Requires nerd-font, install at https://github.com/ryanoasis/nerd-fonts or
+    " brew cask install font-hack-nerd-font
+    " Then set non-ascii font to Driod sans mono for powerline in iTerm2
+    Plug 'kristijanhusak/defx-icons'
+    " disbale syntax highlighting to prevent performence issue
+    let g:defx_icons_enable_syntax_highlight = 1
+endif
 
 " Twiggy's config
 if !hasmapto(':Twiggy')
@@ -719,7 +735,13 @@ let g:autoformat_remove_trailing_spaces = 0
 let verbose=1
 
 " open file from anywhere config
-let g:fzf_layout = { 'window': { 'width': 1, 'height': 1} }
+"
+if has('popupwin') 
+    let g:fzf_layout = { 'window': { 'width': 1, 'height': 1} }
+else
+    let g:fzf_layout = {'down': '30%'}
+endif
+
 if has('mac')
     command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
                 \ 'source'  : 'mdfind -onlyin ~ <q-args>',
