@@ -1,6 +1,8 @@
 " source $VIMRUNTIME/vimrc_example.vim
 " source $VIMRUNTIME/mswin.vim
-"behave mswin
+" behave mswin
+set runtimepath^=~/.vim runtimepath+=~/.vim/after
+let &packpath=&runtimepath
 
 set nocompatible              " be iMproved, required
 filetype off                  " required
@@ -45,7 +47,9 @@ if has("gui_macvim")
 endif
 " }
 
-source $VIMRUNTIME/defaults.vim
+if !has('nvim')
+    source $VIMRUNTIME/defaults.vim
+endif
 if &t_Co > 2 || has("gui_running")
   " Switch on highlighting the last used search pattern.
   set hlsearch
@@ -93,16 +97,15 @@ endfunction
 " Plug 'xolox/vim-notes'
 " Plug 'xolox/vim-misc'
 " Plug 'xolox/vim-session'
-" Plug 'tpope/vim-dispatch'
 " Plug 'skywind3000/asyncrun.vim'
 Plug 'jpalardy/vim-slime'
 Plug 'Lokaltog/vim-easymotion'
 Plug 'vim-scripts/fencview.vim'
+Plug 'vitalk/vim-shebang'
 Plug 'vim-scripts/camelcasemotion'
 Plug 'mhinz/vim-hugefile'
 Plug 'jiangmiao/auto-pairs'
 Plug 'dpelle/vim-LanguageTool'
-Plug 'vim-scripts/matchit.zip'
 Plug 'mbbill/undotree'
 Plug 'tpope/vim-fugitive'
 Plug 'junegunn/gv.vim'
@@ -115,12 +118,17 @@ Plug 'kana/vim-textobj-user'
 Plug 'maxbrunsfeld/vim-yankstack'
 Plug 'kana/vim-textobj-indent'
 Plug 'kana/vim-textobj-line'
+Plug 'airblade/vim-rooter'
 Plug 'kana/vim-textobj-entire'
 Plug 'sgur/vim-textobj-parameter'
 Plug 'glts/vim-textobj-comment'
+if has('mac')
+    Plug 'tpope/vim-dispatch'
+    Plug 'mityu/vim-applescript'
+endif
 Plug 'Julian/vim-textobj-variable-segment'
 Plug 'rizzatti/dash.vim'
-Plug 'gfgkmn/bufexplorer'
+Plug 'jlanzarotta/bufexplorer'
 Plug 'mhinz/vim-startify'
 Plug 'liuchengxu/vista.vim'
 Plug 'terryma/vim-expand-region'
@@ -153,6 +161,7 @@ if v:version >= 801
     Plug 'mg979/vim-visual-multi'
     Plug 'vim-scripts/VimRepress'
     Plug 'SirVer/ultisnips'
+    Plug 'kentaroi/ultisnips-swift'
 endif
 Plug 'jceb/vim-orgmode'
 Plug 'tpope/vim-speeddating'
@@ -204,8 +213,10 @@ Plug 'ktvoelker/sbt-vim', {'for': 'scala'}
 
 Plug 'kchmck/vim-coffee-script', {'for': 'coffeescript'}
 
-Plug 'leafgarland/typescript-vim', {'for': 'typescript'}
-Plug 'Quramy/tsuquyomi', {'for': 'typescript'}
+Plug 'Shougo/unite.vim', {'for': ['typescript', 'javascript']}
+Plug 'leafgarland/typescript-vim', {'for': ['typescript', 'javascript']}
+Plug 'Quramy/tsuquyomi', {'for': ['typescript', 'javascript']}
+Plug 'mhartington/vim-typings', {'for': ['typescript', 'javascript']}
 
 Plug 'xolox/vim-lua-ftplugin', {'for': 'lua'}
 Plug 'tbastos/vim-lua', {'for': 'lua'}
@@ -277,6 +288,9 @@ let g:grepper = {'tools': ['ag'],
 " let g:swap#rules = deepcopy(g:swap#default_rules)
 " todo to know how to sway a + b + c
 
+" vim-rooter config
+let g:rooter_patterns = ['.git', 'Makefile', 'CMakeLists.txt', '*.sln', 'build/env.sh', 'start.sh']
+let g:rooter_silent_chdir = 1
 
 " vista config
 let g:vista#executive#ctags#support_json_format = 1
@@ -377,8 +391,9 @@ else
                 \   . ',__pycache__,.sass-cache,*.egg-info,.DS_Store,*.pyc,*.swp'
                 \ })
      
+
     map <silent> <leader>nt :Defx<CR>
-    nnoremap <silent> <Leader>nr :<C-u>Defx -resume -buffer-name=tab`tabpagenr()` -search=`expand('%:p')`<CR>
+    nnoremap <silent> <Leader>nr :Defx `expand('%:p:h')` -search=`expand('%:p')`<CR>
     " Avoid the white space highting issue
     autocmd FileType defx match ExtraWhitespace /^^/
     " Keymap in defx
@@ -398,7 +413,11 @@ else
       nnoremap <silent><buffer><expr> C defx#do_action('copy')
       nnoremap <silent><buffer><expr> P defx#do_action('paste')
       nnoremap <silent><buffer><expr> M defx#do_action('rename')
-      nnoremap <silent><buffer><expr> D defx#do_action('remove_trash')
+      if has('mac')
+          nnoremap <silent><buffer><expr> D defx#do_action('remove_trash', 'force')
+      else
+          nnoremap <silent><buffer><expr> D defx#do_action('remove_trash')
+      endif
       nnoremap <silent><buffer><expr> A defx#do_action('new_multiple_files')
       nnoremap <silent><buffer><expr> - defx#do_action('cd', ['..'])
       nnoremap <silent><buffer><expr> . defx#do_action('toggle_ignored_files')
@@ -444,7 +463,8 @@ endif
 let g:web_search_use_default_mapping = "yes"
 let g:web_search_engine = "google"
 let g:web_search_command = "open"
-nnoremap <leader>se :WebSearchVisual<CR>
+noremap <leader>se :WebSearchVisual<CR>
+nnoremap <leader>so :WebSearch 
 
 " dict's keymapping
 nnoremap <leader>ds :MacDictWord<CR>
@@ -491,13 +511,17 @@ highlight GitGutterChangeDelete ctermfg=4
 
 " autopair config
 " disable autpopair
-imap <C-d>p <M-p>
+" imap <C-d>p <M-p>
+imap <C-d>u <M-p>
 " bring next word forward
-imap <C-d>e <M-e>
+" imap <C-d>e <M-e>
+imap <C-d>i <M-e>
 " jump after paird symbol
-imap <C-d>n <M-n>
-" after ignore input, regrest it
-imap <C-d>b <M-b>
+" imap <C-d>n <M-n>
+imap <C-d>o <M-n>
+" after ignore input, regret it
+" imap <C-d>b <M-b>
+imap <C-d>p <M-b>
 
 """youCompleteMe's config
 let g:ycm_complete_in_comments = 1
@@ -527,6 +551,8 @@ nnoremap <leader>gg :YcmCompleter GoToDeclaration<CR>
 nnoremap <leader>gf :YcmCompleter GoToDefinition<CR>
 nnoremap <leader>gl :YcmCompleter GoToImprecise<CR>
 nnoremap <leader>gr :YcmCompleter GoToReference<CR>
+nnoremap <leader>gi :YcmCompleter GoToInclude<CR>
+nnoremap <leader>gi :YcmCompleter GoToInclude<CR>
 nnoremap <leader>gd :YcmCompleter GetDoc<CR>
 nnoremap <leader>gc :YcmCompleter GetParent<CR>
 nnoremap <leader>gp :YcmCompleter GetType<CR>
@@ -548,10 +574,10 @@ inoremap <C-S-o> <C-x><C-o>
 " set laststatus=2
 
 "mirrorconfig
+let g:mirror#spawn_command = ':Start '
 nmap <leader>pu :MirrorPull<CR>
-nmap <leader>gp :MirrorPush<CR>
+nmap <leader>ph :MirrorPush<CR>
 nmap <leader>md :MirrorDiff<CR>
-
 
 
 
@@ -568,7 +594,6 @@ if !exists("g:ycm_semantic_triggers")
                 \   'ruby' : ['.', '::'],
                 \   'lua' : ['.', ':'],
                 \   'erlang' : [':'],
-                \   'typescript': ['.'],
                 \   'tex': [
                 \     're!\\[A-Za-z]*cite[A-Za-z]*(\[[^]]*\]){0,2}{[^}]*',
                 \     're!\\[A-Za-z]*ref({[^}]*|range{([^,{}]*(}{)?))',
@@ -684,7 +709,11 @@ autocmd FileType mma setlocal commentstring=(*\ %s\ *)
 "----------indent and fold config----------------------
 set diffopt=filler,context:3,iwhite
 set et sw=4 sts=4 tabstop=4
-" set textwidth=110
+if has('mac')
+    autocmd FileType python setlocal textwidth=80
+else
+    autocmd FileType python setlocal textwidth=110
+endif
 
 " autocmd FileType cpp setlocal tabstop=4
 " autocmd FileType python setlocal foldmethod=indent
@@ -702,6 +731,9 @@ autocmd FileType tex setlocal spell
 autocmd FileType tex setlocal complete-=i
 autocmd FileType tex noremap <leader>wc :w !detex % \| wc<CR>
 
+autocmd FileType lisp setlocal commentstring=;;%s
+
+
 "----------autoformat config-------------
 noremap <leader>cf :Autoformat<CR>
 let g:formatters_java = ['astyle_java']
@@ -715,7 +747,7 @@ let g:formatdef_astyle_java = '"astyle --mode=java --style=google --max-code-len
 let g:formatters_cpp = ['clang_format']
 let g:formatdef_clang_format = "'clang-format -style=\"{BasedOnStyle: Google, IndentWidth: 4,
             \AlwaysBreakTemplateDeclarations: false, ColumnLimit: ".(&textwidth)."}\"
-            \-lines='.a:firstline.':'.a:lastline"
+            \ -lines='.a:firstline.':'.a:lastline"
 let g:formatters_cmake = ['my_cmake']
 let g:formatdef_my_cmake = '"cmake-format -"'
 let g:formatters_mason = ['html_beautify']
@@ -728,11 +760,16 @@ let g:formatdef_jsbeautify_javascript = '"js-beautify -".(&expandtab ? "s ".shif
             \"t").(&textwidth ? " -w ".&textwidth : "")'
 " let g:formatter_yapf_style = 'google'
 let g:formatdef_yapf = '"yapf --style=\"{column_limit: ".(&textwidth)."}\" -l ".a:firstline."-".a:lastline' 
+let g:formatters_swift = ['swiftformat']
+let g:formatdef_swiftformat = '"cat - | swiftformat --swiftversion 5.3.2 --quiet --linerange ".a:firstline.",".a:lastline'
 let g:autoformat_autoindent = 0
 let g:autoformat_retab = 0
 let g:autoformat_remove_trailing_spaces = 0
-" let g:autoformat_verbosemode=1
-let verbose=1
+" tocreate: write a function to print normal debug info, include ycmdebug,
+" autoformat verbose, and ale linter etc
+let g:autoformat_verbosemode=1
+" 0 no message, 1 only error message, 2 all message
+" let verbose=1
 
 " open file from anywhere config
 "
@@ -741,7 +778,6 @@ if has('popupwin')
 else
     let g:fzf_layout = {'down': '30%'}
 endif
-
 if has('mac')
     command! -nargs=1 FzfSpotlight call fzf#run(fzf#wrap({
                 \ 'source'  : 'mdfind -onlyin ~ <q-args>',
@@ -828,6 +864,9 @@ let g:fzf_action = {
 " vim-markdown config
 let g:tex_conceal = ""
 let g:vim_markdown_math = 1
+if has('mac'):
+    let g:mkdp_markdown_css = '/Users/gfgkmn/Configs/markdown_css/gfgkmn.css' 
+endif
 
 
 "----------this is running file config-------------
