@@ -19,6 +19,8 @@ else
 
 fi
 
+curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
+
 if [ ! -d ~/.vimbakfiles ]
 then
 	mkdir ~/.vimbakfiles
