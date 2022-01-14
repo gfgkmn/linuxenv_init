@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
+
+if [[ "RedHatEnterpriseServer" = "$RELEASE"  || "CentOS" = "$RELEASE" ]];
+then
+	sudo yum install epel-release
+	sudo yum install the_silver_searcher
+else
+    sudo apt-get install -y silversearcher-ag
+fi
+
 if [ ! -d ~/Application/bin ]
 then
 	mkdir -p ~/Application/bin

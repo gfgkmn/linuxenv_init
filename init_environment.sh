@@ -8,6 +8,8 @@ then
 	sudo yum install build-essential cmake
 	sudo yum install python-dev python3-dev
 	sudo yum install mutt msmtp
+	sudo yum install epel-release
+	sudo yum install the_silver_searcher
 	sudo yum install xclip
 else
 	sudo apt-get install -y build-essential cmake
