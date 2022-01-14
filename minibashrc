@@ -3,6 +3,8 @@ export HISTSIZE=200000
 export HISTTIMEFORMAT="[%F %T] "
 PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\$ '
 
+export PATH=$HOME/Application/bin:$PATH
+
 fasd_cache="$HOME/.fasd-init-bash"
 if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
   fasd --init posix-alias bash-hook bash-ccomp bash-ccomp-install >| "$fasd_cache"
@@ -70,4 +72,3 @@ cf() {
   fi
 }
 
-export PATH=$HOME/Application/bin:$PATH
