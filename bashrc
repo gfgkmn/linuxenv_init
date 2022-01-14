@@ -154,7 +154,6 @@ alias sd='fasd -sid'     # interactive directory selection
 alias sf='fasd -sif'     # interactive file selection
 alias j='fasd_cd -d'     # cd, same functionality as j in autojump
 alias jj='fasd_cd -d -i' # cd with interactive selection
-alias tmls='tmux at -t $(tmux ls -F "#S" | fzf)'
 
 fs() {
   local session

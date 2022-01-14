@@ -3,29 +3,6 @@ export HISTSIZE=200000
 export HISTTIMEFORMAT="[%F %T] "
 PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\$ '
 
-
-
-if [ ! -d ~/Application/bin ]
-then
-	mkdir -p ~/Application/bin
-fi
-if [[ ! -d ~/Application/PathPicker ]]; then
-	git clone https://github.com/facebook/PathPicker.git
-	mv PathPicker ~/Application
-	ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
-fi
-if [[ ! -d ~/Application/fzf ]]; then
-	git clone --depth 1 https://github.com/junegunn/fzf.git
-	mv fzf ~/Application/
-	~/Application/fzf/install
-fi
-if [[ ! -f ~/Application/bin/fasd ]]; then
-	cp fasd ~/Application/bin/
-fi
-if [[ ! -f ~/Application/bin/pbcopy ]]; then
-	cp pbcopy ~/Application/bin/
-fi
-
 fasd_cache="$HOME/.fasd-init-bash"
 if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
   fasd --init posix-alias bash-hook bash-ccomp bash-ccomp-install >| "$fasd_cache"
@@ -41,6 +18,56 @@ alias sd='fasd -sid'     # interactive directory selection
 alias sf='fasd -sif'     # interactive file selection
 alias j='fasd_cd -d'     # cd, same functionality as j in autojump
 alias jj='fasd_cd -d -i' # cd with interactive selection
-alias tmls='tmux at -t $(tmux ls -F "#S" | fzf)'
 
-curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
+fs() {
+  local session
+  session=$(tmux list-sessions -F "#{session_name}" | \
+    fzf --query="$1" --select-1 --exit-0) &&
+  tmux a -t "$session"
+}
+
+v() {
+  local files
+  files=$(grep '^>' ~/.viminfo | cut -c3- |
+          while read line; do
+            [ -f "${line/\~/$HOME}" ] && echo "$line"
+          done | fzf -d -m -q "$*" -1) && vim ${files//\~/$HOME}
+}
+
+# enter some sub folder
+cdf() {
+   local file
+   local dir
+   file=$(fzf +m -q "$1") && dir=$(dirname "$file") && cd "$dir"
+}
+
+# search file name locally then open
+vf() {
+  local files
+
+  files=(${(f)"$(locat -Ai -0 $@ | grep -z -vE '~$' | fzf --read0 -0 -1 -m)"})
+
+  if [[ -n $files ]]
+  then
+     vim -- $files
+     print -l $files[1]
+  fi
+}
+
+cf() {
+  local file
+
+  file="$(locate -Ai -0 "$@" | grep -z -vE '~$' | fzf --read0 -0 -1)"
+
+  if [[ -n $file ]]
+  then
+     if [[ -d $file ]]
+     then
+        cd -- $file
+     else
+        cd -- ${file:h}
+     fi
+  fi
+}
+
+export PATH=$HOME/Application/bin:$PATH
