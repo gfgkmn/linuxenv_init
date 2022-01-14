@@ -113,6 +113,9 @@ if ! shopt -oq posix; then
   fi
 fi
 
+
+# start from here
+
 # export PATH=$HOME/Application/bin:/snap/bin:$PATH:/usr/local/cuda-8.0/bin:/home/yuhe/.local/bin
 export PATH=$HOME/Application/bin:/snap/bin:$PATH:/usr/local/cuda-10.0/bin:/home/yuhe/.local/bin
 export PYTHONPATH=$PYTHONPATH:~/Application/snippets/
@@ -122,9 +125,6 @@ export PYTHONPATH=$PYTHONPATH:~/Application/snippets/
 export LD_LIBRARY_PATH=/usr/local/cuda-10.0/lib64:/usr/local/cuda-10.0/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda-10.0/lib64:$LIBRARY_PATH
 
-
-source ~/Application/bin/z.sh
-alias j=z
 
 source $(which virtualenvwrapper.sh)
 export HISTFILESIZE=

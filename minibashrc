@@ -1,0 +1,46 @@
+export HISTFILESIZE=
+export HISTSIZE=200000
+export HISTTIMEFORMAT="[%F %T] "
+PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\$ '
+
+
+
+if [ ! -d ~/Application/bin ]
+then
+	mkdir -p ~/Application/bin
+fi
+if [[ ! -d ~/Application/PathPicker ]]; then
+	git clone https://github.com/facebook/PathPicker.git
+	mv PathPicker ~/Application
+	ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
+fi
+if [[ ! -d ~/Application/fzf ]]; then
+	git clone --depth 1 https://github.com/junegunn/fzf.git
+	mv fzf ~/Application/
+	~/Application/fzf/install
+fi
+if [[ ! -f ~/Application/bin/fasd ]]; then
+	cp fasd ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/pbcopy ]]; then
+	cp pbcopy ~/Application/bin/
+fi
+
+fasd_cache="$HOME/.fasd-init-bash"
+if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
+  fasd --init posix-alias bash-hook bash-ccomp bash-ccomp-install >| "$fasd_cache"
+fi
+source "$fasd_cache"
+unset fasd_cache
+
+alias a='fasd -a'        # any
+alias s='fasd -si'       # show / search / select
+alias d='fasd -d'        # directory
+alias f='fasd -f'        # file
+alias sd='fasd -sid'     # interactive directory selection
+alias sf='fasd -sif'     # interactive file selection
+alias j='fasd_cd -d'     # cd, same functionality as j in autojump
+alias jj='fasd_cd -d -i' # cd with interactive selection
+alias tmls='tmux at -t $(tmux ls -F "#S" | fzf)'
+
+curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
