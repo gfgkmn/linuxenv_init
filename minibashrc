@@ -30,6 +30,14 @@ fs() {
   tmux a -t "$session"
 }
 
+
+ds() {
+  local container
+  session=$(docker ps -a --format '{{ .Names }}' | \
+    fzf --query="$1" --select-1 --exit-0) &&
+  docker attach "$session"
+}
+
 v() {
   local files
   files=$(grep '^>' ~/.viminfo | cut -c3- |
