@@ -21,18 +21,6 @@ else
 
 fi
 
-curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
-
-if [ ! -d ~/.vimbakfiles ]
-then
-	mkdir ~/.vimbakfiles
-fi
-
-if [ ! -d ~/.vim/vundls ]
-then
-	mkdir -p ~/.vim/vundles/
-fi
-
 if [ ! -d ~/Application/bin ]
 then
 	mkdir -p ~/Application/bin
@@ -47,6 +35,26 @@ if [[ ! -d ~/Application/fzf ]]; then
 	mv fzf ~/Application/
 	~/Application/fzf/install
 fi
+
+if [[ ! -f ~/Application/bin/fasd ]]; then
+	cp fasd ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/imgcat ]]; then
+	cp imgcat ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/z.sh ]]; then
+	cp z.sh ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/pbcopy ]]; then
+	cp pbcopy ~/Application/bin/
+fi
+if [[ ! -f ~/.pip/pip.conf ]]; then
+	mkdir ~/.pip/
+	cp ./pip.conf ~/.pip/
+fi
+
+
+
 if [ ! -d ~/.ipython/profile_default ]
 then
 	mkdir -p ~/.ipython/profile_default
@@ -55,6 +63,20 @@ then
     cp 00-forimport.py ~/.ipython/profile_default/startup/
 fi
 cp .inputrc ~/
+
+
+curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
+
+if [ ! -d ~/.vimbakfiles ]
+then
+	mkdir ~/.vimbakfiles
+fi
+
+if [ ! -d ~/.vim/vundles ]
+then
+	mkdir -p ~/.vim/vundles/
+fi
+
 current_folder=$(pwd)
 if [[ ! -d ~/.vim/vundles/vim-plug ]]; then
 	cd ~/.vim/vundles || exit
@@ -77,23 +99,6 @@ fi
 if [[ ! -d ~/.vim/UltiSnips ]]; then
     cp -R ./UltiSnips/ ~/.vim/
 fi
-if [[ ! -f ~/Application/bin/fasd ]]; then
-	cp fasd ~/Application/bin/
-fi
-if [[ ! -f ~/Application/bin/imgcat ]]; then
-	cp imgcat ~/Application/bin/
-fi
-if [[ ! -f ~/Application/bin/z.sh ]]; then
-	cp z.sh ~/Application/bin/
-fi
-if [[ ! -f ~/Application/bin/pbcopy ]]; then
-	cp pbcopy ~/Application/bin/
-fi
-if [[ ! -f ~/.pip/pip.conf ]]; then
-	mkdir ~/.pip/
-	cp ./pip.conf ~/.pip/
-fi
-
 ssh-keygen -t rsa -N ''
 
 cat >> ~/.ssh/authorized_keys << eof
