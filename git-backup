@@ -1,0 +1,66 @@
+#!/bin/bash
+
+echo "Select an operation:"
+echo "1. Backup"
+echo "2. Restore"
+read -p "Enter your choice (1 or 2): " choice
+
+case $choice in
+    1)
+        # Option 1: Backup
+        echo "Backing up changes..."
+
+        # Stage all changes
+        git add *.py *.sh
+
+        # Get the last commit id
+        last_commit_id=$(git rev-parse HEAD)
+
+        # Commit all changes, using the last commit id in the commit message
+        git commit -m "Backup commit, previous commit id was $last_commit_id"
+
+        # Get the new commit id
+        new_commit_id=$(git rev-parse HEAD)
+        repo_name=$(git rev-parse --show-toplevel | xargs basename)
+
+        # Create a patch file from the last commit
+        git format-patch -1 $new_commit_id --stdout >${repo_name}_backup_${last_commit_id}.patch
+
+        echo "Backup created: ${repo_name}_backup_${last_commit_id}.patch"
+        ;;
+    2)
+        # Option 2: Restore
+        # Provide two options for restoring changes
+        echo "Restoring changes..."
+        echo "Select a restore method:"
+        echo "1. Git reset to the previous commit"
+        echo "2. Git checkout and apply patch"
+        read -p "Enter your choice (1 or 2): " restore_choice
+
+        case $restore_choice in
+            1)
+                # Option 1: Git reset to the previous commit
+                echo "Resetting to the previous commit..."
+                git reset --soft HEAD^
+                ;;
+            2)
+                # Option 2: Git checkout and apply patch
+                echo "Enter the name of the backup patch file:"
+                read patch_file
+
+                # Extract commit id from the patch file name
+                commit_id=${patch_file#backup_}
+                commit_id=${commit_id%.patch}
+                echo "Checking out to commit $commit_id and applying patch..."
+                git checkout $commit_id
+                git apply $patch_file
+                ;;
+            *)
+                echo "Invalid choice. Please enter 1 or 2."
+                ;;
+        esac
+        ;;
+    *)
+        echo "Invalid choice. Please enter 1 or 2."
+        ;;
+esac
