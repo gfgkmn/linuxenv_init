@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 
-RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
+if command -v lsb_release >/dev/null 2>&1; then
+    RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
+else
+    if [ -f /etc/issue ]; then
+        RELEASE=$(cat /etc/issue | awk '{print $1}' | head -n1)
+    else
+        echo "Cannot determine distribution"
+        exit 1
+    fi
+fi
+
+echo "Distribution: $RELEASE"
 
 if [[ "RedHatEnterpriseServer" = "$RELEASE"  || "CentOS" = "$RELEASE" ]];
 then
