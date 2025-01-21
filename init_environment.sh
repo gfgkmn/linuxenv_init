@@ -60,6 +60,7 @@ else
 	sudo apt-get install -y mutt msmtp jq
 	sudo apt-get install -y silversearcher-ag
 	sudo apt-get install -y gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
+	sudo apt-get install -y cargo
 
 fi
 
@@ -133,3 +134,6 @@ make
 make install # may require extra privileges depending on where to install
 
 cat minibashrc >> ~/.bashrc
+
+curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | bash
+source $HOME/.atuin/bin/env
