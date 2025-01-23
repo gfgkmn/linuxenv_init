@@ -137,3 +137,5 @@ cat minibashrc >> ~/.bashrc
 
 curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | bash
 source $HOME/.atuin/bin/env
+
+curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
