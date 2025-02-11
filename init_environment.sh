@@ -49,6 +49,7 @@ if [[ "RedHatEnterpriseServer" = "$RELEASE" || "CentOS" = "$RELEASE" ]]; then
 	sudo yum install ctags
 	sudo yum install build-essential cmake
 	sudo yum install python-dev python3-dev
+	sudo yum install npm mono-devel openjdk-8-jre
 	sudo yum install mutt msmtp
 	sudo yum install epel-release
 	sudo yum install the_silver_searcher
@@ -57,6 +58,7 @@ else
 	sudo apt-get install -y build-essential cmake
 	sudo apt-get install -y python-dev python3-dev
 	sudo apt-get install -y libjansson-dev # ctags needs json
+	sudo apt-get install -y npm mono-devel openjdk-8-jre
 	sudo apt-get install -y mutt msmtp jq
 	sudo apt-get install -y silversearcher-ag
 	sudo apt-get install -y gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
@@ -76,6 +78,14 @@ if [[ ! -d ~/Application/fzf ]]; then
 	git clone --depth 1 https://github.com/junegunn/fzf.git
 	mv fzf ~/Application/
 	~/Application/fzf/install
+fi
+
+if [[ ! -d ~/Application/ycmd ]]; then
+	git clone git@github.com:ycm-core/ycmd.git
+	mv ycmd ~/Application
+	cd ~/Application/ycmd || exit
+	git submodule update --init --recursive
+	python build.py --all
 fi
 
 if [[ ! -f ~/Application/bin/fasd ]]; then
