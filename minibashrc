@@ -5,7 +5,7 @@ PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F
 
 export PATH=$HOME/Application/bin:$PATH
 export TRANSFORMERS_CACHE=/data1/hub
-export PYTHONPATH="$PYTHONPATH:$HOME/Application/snippets/"
+export PYTHONPATH=${PYTHONPATH:+$PYTHONPATH:}$HOME/Application/my_snippets/
 
 fasd_cache="$HOME/.fasd-init-bash"
 if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then

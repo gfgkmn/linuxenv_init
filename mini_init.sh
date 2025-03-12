@@ -25,6 +25,12 @@ if [ ! -d ~/Application/bin ]
 then
 	mkdir -p ~/Application/bin
 fi
+
+if [ ! -d ~/Application/my_snippets ]
+then
+    git clone git@github.com:gfgkmn/my_snippets.git
+fi
+
 if [[ ! -d ~/Application/PathPicker ]]; then
 	git clone https://github.com/facebook/PathPicker.git
 	mv PathPicker ~/Application
