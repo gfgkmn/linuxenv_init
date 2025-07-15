@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+card_used_info=$(nvidia-smi --query-compute-apps=gpu_bus_id,pid --format=csv,noheader,nounits)
+
+# for every line in the output, convert gpu_bus_id to a gpu index, and use pid to query ps -f info, then pretty print
+
+printf "%-6s %-8s %-12s %-8s %-50s\n" "GPU_ID" "PID" "USER" "PPID" "COMMAND"
+echo "--------------------------------------------------------------------------------"
+
+# Get total number of GPUs
+total_gpus=$(nvidia-smi --query-gpu=gpu_bus_id --format=csv,noheader,nounits | wc -l)
+
+# Create array to track which GPUs are used and store user info
+declare -a gpu_used
+declare -a gpu_users
+for ((i=0; i<total_gpus; i++)); do
+    gpu_used[i]=0
+    gpu_users[i]=""
+done
+
+# Process each line of card_used_info and collect user info
+while IFS=', ' read -r bus_id pid; do
+    # Convert bus_id to gpu index by counting position
+    gpu_idx=$(nvidia-smi --query-gpu=gpu_bus_id --format=csv,noheader,nounits | grep -n "^$bus_id$" | cut -d: -f1)
+    gpu_idx=$((gpu_idx - 1))  # Convert to 0-based index
+
+    # Mark this GPU as used
+    gpu_used[$gpu_idx]=1
+
+    # Get user info and store it
+    if ps_info=$(ps -f -p "$pid" 2>/dev/null | tail -n +2); then
+        echo "$ps_info" | while read -r user pid ppid c stime tty time cmd; do
+            # Truncate command to 50 characters
+            truncated_cmd=$(echo "$cmd" | cut -c1-50)
+            if [ ${#cmd} -gt 50 ]; then
+                truncated_cmd="${truncated_cmd}..."
+            fi
+            printf "%-6s %-8s %-12s %-8s %-50s\n" "$gpu_idx" "$pid" "$user" "$ppid" "$truncated_cmd"
+        done
+
+        # Collect user info for summary table
+        user=$(ps -o user= -p "$pid" 2>/dev/null | tr -d ' ')
+        if [ -n "$user" ]; then
+            if [ -z "${gpu_users[$gpu_idx]}" ]; then
+                gpu_users[$gpu_idx]="$user"
+            elif [[ "${gpu_users[$gpu_idx]}" != *"$user"* ]]; then
+                gpu_users[$gpu_idx]="${gpu_users[$gpu_idx]},$user"
+            fi
+        fi
+    else
+        printf "%-6s %-8s %-12s %-8s %-50s\n" "$gpu_idx" "$pid" "N/A" "N/A" "Process not found"
+    fi
+done <<< "$card_used_info"
+
+# Show GPU status summary
+echo ""
+printf "%-6s %-12s %-10s %-10s %-12s %-50s\n" "GPU_ID" "USER" "USED_MEM" "TOTAL_MEM" "UTILIZATION" "STATUS"
+echo "--------------------------------------------------------------------------------"
+
+for ((i=0; i<total_gpus; i++)); do
+    # Get GPU memory and utilization info
+    gpu_info=$(nvidia-smi --query-gpu=memory.total,memory.used,utilization.gpu --format=csv,noheader,nounits -i $i)
+    IFS=', ' read -r total_mem used_mem gpu_util <<< "$gpu_info"
+
+    if [ ${gpu_used[i]} -eq 0 ]; then
+        # Empty GPU
+        printf "%-6s %-25s %-10s %-10s %-12s %-50s\n" "$i" "-" "${used_mem}MB" "${total_mem}MB" "${gpu_util}%" "Available"
+    else
+        # Used GPU - use collected user info
+        users_display="${gpu_users[i]}"
+        if [ -z "$users_display" ]; then
+            users_display="Unknown"
+        fi
+
+        printf "%-6s %-25s %-10s %-10s %-12s %-50s\n" "$i" "$users_display" "${used_mem}MB" "${total_mem}MB" "${gpu_util}%" "In Use"
+    fi
+done

@@ -1,0 +1,127 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import sys
+
+import pandas as pd
+
+
+def read_data(fp):
+    """
+    Read data from various file formats supported by pandas
+
+    Args:
+        fp (str): File path
+
+    Returns:
+        pd.DataFrame: Loaded data
+    """
+    if not os.path.exists(fp):
+        print(f"Error: File '{fp}' not found")
+        sys.exit(1)
+
+    # Get file extension (case insensitive)
+    ext = os.path.splitext(fp)[1].lower()
+
+    try:
+        if ext == '.csv':
+            data = pd.read_csv(fp)
+        elif ext == '.parquet':
+            data = pd.read_parquet(fp)
+        elif ext in ['.xlsx', '.xls']:
+            data = pd.read_excel(fp)
+        elif ext == '.json':
+            data = pd.read_json(fp)
+        elif ext == '.jsonl':
+            data = pd.read_json(fp, lines=True)
+        elif ext == '.tsv':
+            data = pd.read_csv(fp, sep='\t')
+        elif ext == '.feather':
+            data = pd.read_feather(fp)
+        elif ext == '.pickle' or ext == '.pkl':
+            data = pd.read_pickle(fp)
+        elif ext == '.h5' or ext == '.hdf5':
+            # For HDF5, you might need to specify the key
+            data = pd.read_hdf(fp)
+        elif ext == '.orc':
+            data = pd.read_orc(fp)
+        elif ext == '.sas7bdat':
+            data = pd.read_sas(fp)
+        elif ext == '.dta':
+            data = pd.read_stata(fp)
+        elif ext == '.spss':
+            data = pd.read_spss(fp)
+        else:
+            supported_formats = [
+                '.csv', '.parquet', '.xlsx', '.xls', '.json', '.jsonl', '.tsv',
+                '.feather', '.pickle', '.pkl', '.h5', '.hdf5', '.orc', '.sas7bdat',
+                '.dta', '.spss'
+            ]
+            print(f"Error: Unsupported file type '{ext}'")
+            print(f"Supported formats: {', '.join(supported_formats)}")
+            sys.exit(1)
+
+        print(f"Successfully loaded {len(data):,} rows from {fp}")
+        return data
+
+    except Exception as e:
+        print(f"Error reading file '{fp}': {str(e)}")
+        sys.exit(1)
+
+
+def showcolumns(fp):
+    data = read_data(fp)
+    print(data.columns)
+
+
+def to_csv(fp, enc):
+    """convert excel to csv
+
+    :fp: TODO
+    :returns: TODO
+
+    """
+    data = read_data(fp)
+    filename = '.'.join(os.path.basename(fp).split('.')[:-1]) + '.csv'
+    data.to_csv(filename, encoding=enc)
+
+
+def shape(fp):
+    data = read_data(fp)
+    print(data.shape)
+
+
+def demodata(fp):
+    data = read_data(fp)
+    print(data)
+
+
+def describ(fp):
+    data = read_data(fp)
+    print(data.describe())
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--method',
+                        type=str,
+                        choices=['columns', 'to_csv', 'shape', 'demodata', 'describ'],
+                        help='command used excel usage')
+    parser.add_argument('table_file', type=str, help='path to the input CSV file')
+    parser.add_argument('--encoding',
+                        type=str,
+                        default='utf-8',
+                        help='when save csv, choose encoding')
+    args = parser.parse_args()
+    method_dic = {
+        'columns': showcolumns,
+        'to_csv': to_csv,
+        'shape': shape,
+        'demodata': demodata,
+        'describ': describ
+    }
+    if args.method == 'to_csv':
+        method_dic[args.method](args.table_file, args.encoding)
+    else:
+        method_dic[args.method](args.table_file)

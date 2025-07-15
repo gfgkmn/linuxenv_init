@@ -3,6 +3,14 @@
 init-vim() {
 	current_folder=$(pwd)
 
+
+	git clone git@github.com:universal-ctags/ctags.git
+	cd ctags || exit
+	./autogen.sh
+	./configure --prefix=/home/yuhe/Application --enable-json # defaults to /usr/local
+	make
+	make install # may require extra privileges depending on where to install
+
 	if [ ! -d ~/.vimbakfiles ]; then
 		mkdir ~/.vimbakfiles
 	fi
@@ -74,6 +82,42 @@ if [[ ! -d ~/Application/PathPicker ]]; then
 	mv PathPicker ~/Application
 	ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
 fi
+
+# if brew not install, install home brew
+if ! command -v brew &> /dev/null; then
+	echo "Brew not found. Installing..."
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+else
+	echo "Brew is already installed"
+fi
+
+# install aichat node go if not installed
+if ! command -v aichat &> /dev/null; then
+	echo "Aichat not found. Installing..."
+	brew install aichat
+else
+	echo "Aichat is already installed"
+fi
+
+if ! command -v node &> /dev/null; then
+	echo "Node not found. Installing..."
+	brew install node
+else
+	echo "Node is already installed"
+fi
+
+if ! command -v go &> /dev/null; then
+	echo "Go not found. Installing..."
+	brew install go
+else
+	echo "Go is already installed"
+fi
+
+if [ ! -d ~/Application/snippets ]
+then
+    git clone git@github.com:gfgkmn/snippets.git
+fi
+
 if [[ ! -d ~/Application/fzf ]]; then
 	git clone --depth 1 https://github.com/junegunn/fzf.git
 	mv fzf ~/Application/
@@ -81,7 +125,7 @@ if [[ ! -d ~/Application/fzf ]]; then
 fi
 
 if [[ ! -d ~/Application/ycmd ]]; then
-	git clone git@github.com:ycm-core/ycmd.git
+	git clone git@github.com:gfgkmn/ycmd.git
 	mv ycmd ~/Application
 	cd ~/Application/ycmd || exit
 	git submodule update --init --recursive
@@ -106,6 +150,13 @@ fi
 if [[ ! -f ~/Application/bin/pbcopy ]]; then
 	cp pbcopy ~/Application/bin/
 fi
+if [[ ! -f ~/Application/bin/display_gpu_info ]]; then
+	cp display_gpu_info ~/Application/bin/
+fi
+if [[ ! -f ~/Application/bin/tableprobe ]]; then
+	cp tableprobe ~/Application/bin/
+fi
+
 if [[ ! -f ~/.pip/pip.conf ]]; then
 	mkdir ~/.pip/
 	cp ./pip.conf ~/.pip/
@@ -116,18 +167,25 @@ if [ ! -d ~/.ipython/profile_default ]; then
 	cp ipython_config.py ~/.ipython/profile_default
 	mkdir -p ~/.ipython/profile_default/startup/
 	cp 00-forimport.py ~/.ipython/profile_default/startup/
+	cp -R extensions ~/.ipython/
 fi
-cp .inputrc ~/
 
-curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
+if [[ ! -d ~/.inputrc ]]; then
+	cp .inputrc ~/
+fi
 
-ssh-keygen -t rsa -N ''
+if [[ ! -f ~/.iterm2_shell_integration.bash ]]; then
+	curl -L https://iterm2.com/shell_integration/install_shell_integration.sh | bash
+fi
 
-cat >>~/.ssh/authorized_keys <<eof
-ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw== gfgkmn@gmail.com
-eof
+if [[ ! -f ~/.ssh/id_rsa ]]; then
+	ssh-keygen -t rsa -N ''
+	cat >>~/.ssh/authorized_keys <<eof
+	ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw== gfgkmn@gmail.com
+	eof
 
-chmod 600 ~/.ssh/authorized_keys
+	chmod 600 ~/.ssh/authorized_keys
+fi
 
 if [[ ! -f ~/Application/mailtemplete ]]; then
 	cp -r ./mailtemplete ~/Application/
@@ -136,16 +194,14 @@ fi
 git config --global user.email "gfgkmn@gmail.com"
 git config --global user.name "yuhe"
 
-git clone git@github.com:universal-ctags/ctags.git
-cd ctags || exit
-./autogen.sh
-./configure --prefix=/home/yuhe/Application --enable-json # defaults to /usr/local
-make
-make install # may require extra privileges depending on where to install
+if ! grep -q "## minibashrc copied" ~/.bashrc 2>/dev/null; then
+	cat minibashrc >> ~/.bashrc
+fi
 
-cat minibashrc >> ~/.bashrc
-
-curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | bash
-source $HOME/.atuin/bin/env
-
-curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
+if ! command -v atuin &> /dev/null; then
+    echo "Atuin not found. Installing..."
+    curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | bash
+    source $HOME/.atuin/bin/env
+else
+    echo "Atuin is already installed"
+fi

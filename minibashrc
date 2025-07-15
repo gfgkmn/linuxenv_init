@@ -1,11 +1,14 @@
 export HISTFILESIZE=
 export HISTSIZE=200000
 export HISTTIMEFORMAT="[%F %T] "
-PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\$ '
+PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\>: '
 
-export PATH=$HOME/Application/bin:$PATH
+
+export PATH=$HOME/Application/bin:/usr/local/cuda/bin:$PATH
 export TRANSFORMERS_CACHE=/data1/hub
-export PYTHONPATH=${PYTHONPATH:+$PYTHONPATH:}$HOME/Application/my_snippets/
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export PYTHONPATH="$PYTHONPATH:$HOME/Application/snippets/"
+export EDITOR=vim
 
 fasd_cache="$HOME/.fasd-init-bash"
 if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
@@ -87,3 +90,5 @@ cf() {
      fi
   fi
 }
+
+## minibashrc copied

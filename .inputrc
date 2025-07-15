@@ -11,3 +11,6 @@ RETURN: "\e\n"
 
 "\e[5~":history-search-backward
 "\e[6~":history-search-forward
+"\C-a": beginning-of-line
+"\C-e": end-of-line
+"\C-k": kill-line
