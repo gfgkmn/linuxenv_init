@@ -26,7 +26,6 @@ alias jj='fasd_cd -d -i' # cd with interactive selection
 alias ts='tmux -CC'
 alias ai=aichat
 alias ta='tmux -CC attach -t'
-alias cd=fcd
 alias setitermplot='export MPLBACKEND="module://itermplot" && export ITERMPLOT=rv'
 alias unitermplot='unset MPLBACKEND && unset ITERMPLOT'
 alias engpu="rm $HOME/Application/runflags/mail_already"
@@ -45,6 +44,7 @@ fcd() {
     local dir
     dir=$(find . -maxdepth 1 -type d -not -path '*/.*' 2>/dev/null | fzf --query="$1" --select-1 --exit-0 --preview 'ls -la {}' --preview-window=right:50%) && cd "$dir"
 }
+alias cd=fcd
 
 # enter parent folder
 fp() {
