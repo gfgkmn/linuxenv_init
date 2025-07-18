@@ -40,11 +40,10 @@ fs() {
 }
 
 # enhanced cd
-fcd() {
+c() {
     local dir
     dir=$(find . -maxdepth 1 -type d -not -path '*/.*' 2>/dev/null | fzf --query="$1" --select-1 --exit-0 --preview 'ls -la {}' --preview-window=right:50%) && cd "$dir"
 }
-alias cd=fcd
 
 # enter parent folder
 fp() {
