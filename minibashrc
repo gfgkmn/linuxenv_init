@@ -3,9 +3,7 @@ export HISTSIZE=200000
 export HISTTIMEFORMAT="[%F %T] "
 PS1='\[`[ $? = 0  ] && X=2 || X=1; tput setaf $X`\]\h\[`tput sgr0`\]:$PWD  \D{%F %T}\n$USER\>: '
 
-
 export PATH=$HOME/Application/bin:/usr/local/cuda/bin:$PATH
-export TRANSFORMERS_CACHE=/data1/hub
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export PYTHONPATH="$PYTHONPATH:$HOME/Application/snippets/"
 export EDITOR=vim
@@ -28,10 +26,13 @@ alias jj='fasd_cd -d -i' # cd with interactive selection
 alias ts='tmux -CC'
 alias ai=aichat
 alias ta='tmux -CC attach -t'
+alias cd=fcd
 alias setitermplot='export MPLBACKEND="module://itermplot" && export ITERMPLOT=rv'
 alias unitermplot='unset MPLBACKEND && unset ITERMPLOT'
 alias engpu="rm $HOME/Application/runflags/mail_already"
 
+
+# enter tmux session
 fs() {
   local session
   session=$(tmux list-sessions -F "#{session_name}" | \
@@ -39,7 +40,29 @@ fs() {
   tmux a -t "$session"
 }
 
+# enhanced cd
+fcd() {
+    local dir
+    dir=$(find . -maxdepth 1 -type d -not -path '*/.*' 2>/dev/null | fzf --query="$1" --select-1 --exit-0 --preview 'ls -la {}' --preview-window=right:50%) && cd "$dir"
+}
 
+# enter parent folder
+fp() {
+  local declare dirs=()
+  get_parent_dirs() {
+    if [[ -d "${1}" ]]; then dirs+=("$1"); else return; fi
+    if [[ "${1}" == '/' ]]; then
+      for _dir in "${dirs[@]}"; do echo $_dir; done
+    else
+      get_parent_dirs $(dirname "$1")
+    fi
+  }
+  local DIR=$(get_parent_dirs $(realpath "${1:-$PWD}") | fzf-tmux --tac)
+  cd "$DIR"
+}
+
+
+# list running docker containers and attach to one
 ds() {
   local container
   session=$(docker ps -a --format '{{ .Names }}' | \
@@ -47,6 +70,7 @@ ds() {
   docker attach "$session"
 }
 
+# open vim recent files
 v() {
   local files
   files=$(grep '^>' ~/.viminfo | cut -c3- |
@@ -62,8 +86,30 @@ cdf() {
    file=$(fzf +m -q "$1") && dir=$(dirname "$file") && cd "$dir"
 }
 
+
 # search file name locally then open
-vf() {
+fo() {
+  local files
+  IFS=$'\n' files=($(fzf-tmux --query="$1" --multi --select-1 --exit-0))
+  [[ -n "$files" ]] && ${EDITOR:-vim} "${files[@]}"
+}
+
+
+# search content locally then open
+vn() {
+  local file
+
+  # file="$(ag --nobreak --noheading $@ | fzf -0 -1 | awk -F: '{print $1 " +" $2}')"
+  file="$(ag --nobreak --noheading "$@" | fzf -0 -1 | awk -F: '{print $1}')"
+
+  if [[ -n $file ]]
+  then
+     vim $file
+  fi
+}
+
+# search file name global then open
+vg() {
   local files
 
   files=(${(f)"$(locat -Ai -0 $@ | grep -z -vE '~$' | fzf --read0 -0 -1 -m)"})
@@ -75,6 +121,7 @@ vf() {
   fi
 }
 
+# enter folder globally
 cf() {
   local file
 
@@ -91,4 +138,20 @@ cf() {
   fi
 }
 
-## minibashrc copied
+# filter and show history
+fh() {
+  print -z $( ([ -n "$ZSH_NAME" ] && fc -l 1 || history) | fzf +s --tac | sed 's/ *[0-9]* *//')
+}
+
+
+# show git commit content
+fshow() {
+  git log --graph --color=always \
+      --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
+  fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
+      --bind "ctrl-m:execute:
+                (grep -o '[a-f0-9]\{7\}' | head -1 |
+                xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
+                {}
+FZF-EOF"
+}
