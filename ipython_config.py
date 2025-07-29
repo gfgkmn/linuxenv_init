@@ -8,12 +8,16 @@ c.InteractiveShellApp.exec_lines = [
         '''pb <tensor>: Probe PyTorch tensor details.'''
         try:
             import torch
+            from explorer import get_type
             tensor = self.curframe_locals.get(arg)
             if tensor is None:
                 tensor = eval(arg, self.curframe.f_globals, self.curframe_locals)
 
             if not isinstance(tensor, torch.Tensor):
+                # print(f"'{arg}' is not a PyTorch Tensor.")
+                # print the arg as it originally was
                 print(f"'{arg}' is not a PyTorch Tensor.")
+                get_type(tensor)
                 return
 
             print(f"Tensor information:")
