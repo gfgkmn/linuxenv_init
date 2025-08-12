@@ -71,7 +71,6 @@ else
 	sudo apt-get install -y silversearcher-ag
 	sudo apt-get install -y gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
 	sudo apt-get install -y cargo
-
 fi
 
 if [ ! -d ~/Application/bin ]; then
@@ -119,6 +118,7 @@ fi
 if [ ! -d ~/Application/snippets ]
 then
     git clone git@github.com:gfgkmn/snippets.git
+	cp -r snippets ~/Application/snippets
 fi
 
 if [[ ! -d ~/Application/fzf ]]; then
@@ -162,11 +162,17 @@ if [[ ! -f ~/.pip/pip.conf ]]; then
 	cp ./pip.conf ~/.pip/
 fi
 
-if [ ! -d ~/.ipython/profile_default ]; then
+if [ ! -f ~/.ipython/profile_default/ipython_config.py ]; then
 	mkdir -p ~/.ipython/profile_default
-	cp ipython_config.py ~/.ipython/profile_default
+	cp ipython_config.py ~/.ipython/profile_default/
+fi
+
+if [ ! -f ~/.ipython/profile_default/startup/00-forimport.py ]; then
 	mkdir -p ~/.ipython/profile_default/startup/
 	cp 00-forimport.py ~/.ipython/profile_default/startup/
+fi
+
+if [ ! -d ~/.ipython/extensions ]; then
 	cp -R extensions ~/.ipython/
 fi
 
