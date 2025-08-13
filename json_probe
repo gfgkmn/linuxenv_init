@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# Simple JSON/JSONL Structure Probe
+# Always uses first line for JSONL files
+
+show_help() {
+    cat << EOF
+JSON/JSONL Structure Probe Script
+
+USAGE:
+    $0 <file>
+    cat file | $0
+
+For JSONL files, always shows structure of first line only.
+For JSON files, shows full structure.
+
+OPTIONS:
+    -h, --help       Show this help
+
+EXAMPLES:
+    $0 data.json      # Probe JSON file
+    $0 data.jsonl     # Probe first line of JSONL
+    cat data | $0     # Probe from stdin
+
+EOF
+}
+
+# Check for help
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+# jq filter for structure mapping
+JQ_FILTER='def map_values_with_type:
+    if type == "object" then
+        with_entries(.value |= map_values_with_type)
+    elif type == "array" then
+        if length > 0 then
+            if length > 50 then [first | map_values_with_type] + ["<..." + (length|tostring) + " items>"]
+            else [first | map_values_with_type]
+            end
+        else [] end
+    else
+        "<" + type + ">"
+    end;
+map_values_with_type'
+
+# Function to detect file type
+detect_file_type() {
+    local file="$1"
+
+    # If reading from stdin, default to jsonl
+    if [[ -z "$file" ]] || [[ "$file" == "-" ]]; then
+        echo "jsonl"
+        return
+    fi
+
+    # Check file extension
+    case "${file##*.}" in
+        jsonl|ndjson|ldjson)
+            echo "jsonl"
+            ;;
+        json)
+            echo "json"
+            ;;
+        *)
+            # Try to detect by content - if second line exists and is valid JSON, assume JSONL
+            if [[ -f "$file" ]] && sed -n '2p' "$file" 2>/dev/null | jq empty 2>/dev/null; then
+                echo "jsonl"
+            else
+                echo "json"
+            fi
+            ;;
+    esac
+}
+
+# Function to probe with fallback
+probe_with_fallback() {
+    local data="$1"
+    local source="$2"
+
+    # Try full structure first
+    if echo "$data" | timeout 10s jq "$JQ_FILTER" 2>/dev/null; then
+        return 0
+    fi
+
+    echo "Structure too complex for full analysis. Showing simplified view:"
+    echo
+
+    # Fallback 1: Show keys and basic types
+    echo "Top-level keys and types:"
+    if echo "$data" | timeout 5s jq -r 'if type == "object" then to_entries[] | .key + ": " + (.value | type) else "Root type: " + type end' 2>/dev/null; then
+        return 0
+    fi
+
+    # Fallback 2: Just show keys
+    echo "Keys only:"
+    if echo "$data" | timeout 5s jq -r 'if type == "object" then keys[] else "Not an object" end' 2>/dev/null; then
+        return 0
+    fi
+
+    # Fallback 3: Show raw sample
+    echo "Raw sample (first 200 chars):"
+    echo "$data" | cut -c1-200
+    if [[ ${#data} -gt 200 ]]; then
+        echo "... (truncated, total length: ${#data} characters)"
+    fi
+}
+
+# Main execution
+INPUT_FILE="$1"
+
+# Check if jq is available
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed." >&2
+    echo "Install with: sudo apt install jq  # or  brew install jq" >&2
+    exit 1
+fi
+
+# Handle stdin vs file input
+if [[ -z "$INPUT_FILE" ]] || [[ "$INPUT_FILE" == "-" ]]; then
+    # Reading from stdin - assume first line for structure
+    echo "=== Structure from stdin (first line) ==="
+    LINE=$(head -n 1)
+    if [[ -n "$LINE" ]]; then
+        probe_with_fallback "$LINE" "stdin"
+    else
+        echo "No input received"
+        exit 1
+    fi
+else
+    # Reading from file
+    if [[ ! -f "$INPUT_FILE" ]]; then
+        echo "Error: File '$INPUT_FILE' not found." >&2
+        exit 1
+    fi
+
+    FILE_TYPE=$(detect_file_type "$INPUT_FILE")
+    echo "File: $INPUT_FILE"
+    echo "Detected type: $FILE_TYPE"
+    echo "File size: $(du -h "$INPUT_FILE" 2>/dev/null | cut -f1 || echo "unknown")"
+    echo
+
+    if [[ "$FILE_TYPE" == "jsonl" ]]; then
+        echo "=== JSONL Structure (First Line Only) ==="
+        LINE=$(head -n 1 "$INPUT_FILE")
+        if [[ -n "$LINE" ]]; then
+            echo "Line length: $(echo -n "$LINE" | wc -c) characters"
+            echo
+            probe_with_fallback "$LINE" "$INPUT_FILE"
+        else
+            echo "File is empty or first line is blank"
+            exit 1
+        fi
+    else
+        echo "=== JSON Structure ==="
+        if ! probe_with_fallback "$(cat "$INPUT_FILE")" "$INPUT_FILE"; then
+            echo "Failed to analyze JSON structure"
+            exit 1
+        fi
+    fi
+fi

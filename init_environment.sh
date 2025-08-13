@@ -143,6 +143,11 @@ if [[ ! -d ~/Application/ycmd ]]; then
 	python build.py --all
 fi
 
+
+if [[ ! -f ~/Application/bin/json_probe ]]; then
+	cp json_probe ~/Application/bin/
+	chmod +x ~/Application/bin/json_probe
+fi
 if [[ ! -f ~/Application/bin/fasd ]]; then
 	cp fasd ~/Application/bin/
 fi
@@ -157,6 +162,7 @@ if [[ ! -f ~/Application/bin/imgcat ]]; then
 fi
 if [[ ! -f ~/Application/bin/pbcopy ]]; then
 	cp pbcopy ~/Application/bin/
+	chmod +x ~/Application/bin/pbcopy
 fi
 if [[ ! -f ~/Application/bin/display_gpu_info ]]; then
 	cp display_gpu_info ~/Application/bin/
