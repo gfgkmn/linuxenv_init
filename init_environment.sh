@@ -115,6 +115,14 @@ else
 	echo "Go is already installed"
 fi
 
+
+if ! command -v fd &> /dev/null; then
+	echo "fd not found. Installing..."
+	brew install fd
+else
+	echo "fd is already installed"
+fi
+
 if [ ! -d ~/Application/snippets ]
 then
     git clone git@github.com:gfgkmn/snippets.git
