@@ -1,71 +1,131 @@
 #!/bin/bash
 
-# Simple JSON/JSONL Structure Probe
-# Always uses first line for JSONL files
+# Advanced JSON/JSONL Structure Probe
+# Handles multiple item types in arrays and nested dictionaries
 
 show_help() {
     cat << EOF
-JSON/JSONL Structure Probe Script
+Advanced JSON/JSONL Structure Probe
 
 USAGE:
-    $0 <file>
-    cat file | $0
-
-For JSONL files, always shows structure of first line only.
-For JSON files, shows full structure.
+    $0 [options] <file>
+    cat file | $0 [options]
 
 OPTIONS:
-    -h, --help       Show this help
+    -d, --max-depth N    Maximum depth to analyze (default: 10)
+    -s, --sample-size N  Number of array items to sample (default: 10)
+    -c, --compact        Show compact output
+    -h, --help          Show this help
 
 EXAMPLES:
-    $0 data.json      # Probe JSON file
-    $0 data.jsonl     # Probe first line of JSONL
-    cat data | $0     # Probe from stdin
+    $0 data.jsonl                    # Analyze first line of JSONL
+    $0 -d 5 data.json               # Limit depth to 5 levels
+    $0 -s 20 --compact data.jsonl   # Sample 20 array items, compact output
 
 EOF
 }
 
-# Check for help
-if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-    show_help
-    exit 0
-fi
+# Default values
+MAX_DEPTH=10
+SAMPLE_SIZE=10
+COMPACT_OUTPUT=false
+INPUT_FILE=""
 
-# jq filter for structure mapping
-JQ_FILTER='def map_values_with_type:
-    if type == "object" then
-        with_entries(.value |= map_values_with_type)
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -d|--max-depth)
+            if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+                MAX_DEPTH="$2"
+                shift 2
+            else
+                echo "Error: -d requires a positive number" >&2
+                exit 1
+            fi
+            ;;
+        -s|--sample-size)
+            if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+                SAMPLE_SIZE="$2"
+                shift 2
+            else
+                echo "Error: -s requires a positive number" >&2
+                exit 1
+            fi
+            ;;
+        -c|--compact)
+            COMPACT_OUTPUT=true
+            shift
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            show_help
+            exit 1
+            ;;
+        *)
+            if [[ -z "$INPUT_FILE" ]]; then
+                INPUT_FILE="$1"
+            else
+                echo "Error: Multiple files specified" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Advanced jq filter that samples arrays and shows all variants
+create_jq_filter() {
+    local max_depth="$1"
+    local sample_size="$2"
+
+    cat << EOF
+def analyze_structure(\$depth):
+    if \$depth >= $max_depth then
+        "<max_depth_reached>"
+    elif type == "object" then
+        with_entries(.value |= analyze_structure(\$depth + 1))
     elif type == "array" then
-        if length > 0 then
-            if length > 50 then [first | map_values_with_type] + ["<..." + (length|tostring) + " items>"]
-            else [first | map_values_with_type]
+        if length == 0 then
+            []
+        else
+            # Sample items from array for analysis
+            (if length <= $sample_size then . else .[0:$sample_size] end) as \$sample |
+            # Get unique structures from sample
+            (\$sample | map(analyze_structure(\$depth + 1)) | unique) as \$structures |
+
+            if (\$structures | length) == 1 then
+                # All sampled items have same structure
+                [\$structures[0]]
+            else
+                # Multiple structures found - just show the variants
+                \$structures
             end
-        else [] end
+        end
     else
         "<" + type + ">"
     end;
-map_values_with_type'
+
+analyze_structure(0)
+EOF
+}
 
 # Function to detect file type
 detect_file_type() {
     local file="$1"
 
-    # If reading from stdin, default to jsonl
     if [[ -z "$file" ]] || [[ "$file" == "-" ]]; then
         echo "jsonl"
         return
     fi
 
-    # Check file extension
     case "${file##*.}" in
-        jsonl|ndjson|ldjson)
-            echo "jsonl"
-            ;;
-        json)
-            echo "json"
-            ;;
+        jsonl|ndjson|ldjson) echo "jsonl" ;;
+        json) echo "json" ;;
         *)
-            # Try to detect by content - if second line exists and is valid JSON, assume JSONL
             if [[ -f "$file" ]] && sed -n '2p' "$file" 2>/dev/null | jq empty 2>/dev/null; then
                 echo "jsonl"
             else
@@ -75,62 +135,95 @@ detect_file_type() {
     esac
 }
 
-# Function to probe with fallback
-probe_with_fallback() {
+# Function to analyze with progressive fallbacks
+analyze_structure() {
     local data="$1"
     local source="$2"
 
-    # Try full structure first
-    if echo "$data" | timeout 10s jq "$JQ_FILTER" 2>/dev/null; then
+    local jq_filter
+    jq_filter=$(create_jq_filter "$MAX_DEPTH" "$SAMPLE_SIZE")
+
+    # Determine output format
+    local format_args=""
+    if [[ "$COMPACT_OUTPUT" == true ]]; then
+        format_args="--compact-output"
+    else
+        format_args="--indent 2"
+    fi
+
+    # Try advanced analysis first
+    if echo "$data" | timeout 15s jq $format_args "$jq_filter" 2>/dev/null; then
         return 0
     fi
 
-    echo "Structure too complex for full analysis. Showing simplified view:"
+    echo "Complex structure detected. Trying simplified analysis..."
     echo
 
-    # Fallback 1: Show keys and basic types
-    echo "Top-level keys and types:"
-    if echo "$data" | timeout 5s jq -r 'if type == "object" then to_entries[] | .key + ": " + (.value | type) else "Root type: " + type end' 2>/dev/null; then
+    # Fallback: Basic structure with limited depth
+    local simple_filter='
+    def simple_structure($depth):
+        if $depth >= 3 then
+            "<depth_limit>"
+        elif type == "object" then
+            with_entries(.value |= simple_structure($depth + 1))
+        elif type == "array" then
+            if length == 0 then []
+            elif length == 1 then [first | simple_structure($depth + 1)]
+            else [first | simple_structure($depth + 1)] + ["<" + (length|tostring) + " items>"]
+            end
+        else
+            "<" + type + ">"
+        end;
+    simple_structure(0)'
+
+    if echo "$data" | timeout 10s jq $format_args "$simple_filter" 2>/dev/null; then
         return 0
     fi
 
-    # Fallback 2: Just show keys
-    echo "Keys only:"
-    if echo "$data" | timeout 5s jq -r 'if type == "object" then keys[] else "Not an object" end' 2>/dev/null; then
-        return 0
-    fi
-
-    # Fallback 3: Show raw sample
-    echo "Raw sample (first 200 chars):"
-    echo "$data" | cut -c1-200
-    if [[ ${#data} -gt 200 ]]; then
-        echo "... (truncated, total length: ${#data} characters)"
-    fi
+    # Final fallback: Keys and basic info
+    echo "Showing basic structure info:"
+    echo
+    echo "Root type and top-level keys:"
+    echo "$data" | timeout 5s jq -r '
+        if type == "object" then
+            "Type: object",
+            "Keys (" + (keys|length|tostring) + "): " + (keys | join(", "))
+        elif type == "array" then
+            "Type: array[" + (length|tostring) + "]",
+            if length > 0 then
+                "First item type: " + (first | type)
+            else
+                "Empty array"
+            end
+        else
+            "Type: " + type
+        end
+    ' 2>/dev/null || {
+        echo "Raw preview:"
+        echo "$data" | cut -c1-300
+        echo "..."
+    }
 }
 
 # Main execution
-INPUT_FILE="$1"
-
-# Check if jq is available
 if ! command -v jq &> /dev/null; then
     echo "Error: jq is required but not installed." >&2
-    echo "Install with: sudo apt install jq  # or  brew install jq" >&2
     exit 1
 fi
 
-# Handle stdin vs file input
 if [[ -z "$INPUT_FILE" ]] || [[ "$INPUT_FILE" == "-" ]]; then
-    # Reading from stdin - assume first line for structure
-    echo "=== Structure from stdin (first line) ==="
+    echo "=== Structure Analysis from stdin ==="
     LINE=$(head -n 1)
     if [[ -n "$LINE" ]]; then
-        probe_with_fallback "$LINE" "stdin"
+        echo "Input length: $(echo -n "$LINE" | wc -c) characters"
+        echo "Max depth: $MAX_DEPTH, Sample size: $SAMPLE_SIZE"
+        echo
+        analyze_structure "$LINE" "stdin"
     else
         echo "No input received"
         exit 1
     fi
 else
-    # Reading from file
     if [[ ! -f "$INPUT_FILE" ]]; then
         echo "Error: File '$INPUT_FILE' not found." >&2
         exit 1
@@ -138,26 +231,24 @@ else
 
     FILE_TYPE=$(detect_file_type "$INPUT_FILE")
     echo "File: $INPUT_FILE"
-    echo "Detected type: $FILE_TYPE"
-    echo "File size: $(du -h "$INPUT_FILE" 2>/dev/null | cut -f1 || echo "unknown")"
+    echo "Type: $FILE_TYPE"
+    echo "Size: $(du -h "$INPUT_FILE" 2>/dev/null | cut -f1 || echo "unknown")"
+    echo "Max depth: $MAX_DEPTH, Sample size: $SAMPLE_SIZE"
     echo
 
     if [[ "$FILE_TYPE" == "jsonl" ]]; then
-        echo "=== JSONL Structure (First Line Only) ==="
+        echo "=== JSONL Structure Analysis (First Line) ==="
         LINE=$(head -n 1 "$INPUT_FILE")
         if [[ -n "$LINE" ]]; then
             echo "Line length: $(echo -n "$LINE" | wc -c) characters"
             echo
-            probe_with_fallback "$LINE" "$INPUT_FILE"
+            analyze_structure "$LINE" "$INPUT_FILE"
         else
-            echo "File is empty or first line is blank"
+            echo "File is empty"
             exit 1
         fi
     else
-        echo "=== JSON Structure ==="
-        if ! probe_with_fallback "$(cat "$INPUT_FILE")" "$INPUT_FILE"; then
-            echo "Failed to analyze JSON structure"
-            exit 1
-        fi
+        echo "=== JSON Structure Analysis ==="
+        analyze_structure "$(cat "$INPUT_FILE")" "$INPUT_FILE"
     fi
 fi
