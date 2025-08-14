@@ -24,8 +24,18 @@ from IPython.core.magic import (Magics, line_magic, magics_class, register_line_
 from chatgpt_v3 import Chatbot
 
 __configpath = os.path.join(os.getenv('HOME'), '.config', 'chatgptel.json')
-bots = json.load(open(__configpath, 'r'))
-bots['pythongpt']["identity"] = Chatbot(**bots['pythongpt']["born_setting"])
+# Sanity check for config file
+if not os.path.exists(__configpath):
+    print(f"Warning: Configuration file not found at {__configpath}")
+    print("Please create the chatgptel.json configuration file to use ChatGPT features.")
+    bots = {}
+else:
+    try:
+        bots = json.load(open(__configpath, 'r'))
+        bots['pythongpt']["identity"] = Chatbot(**bots['pythongpt']["born_setting"])
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Error loading configuration file: {e}")
+        bots = {}
 __history_len = 0
 __last_exception = None
 
@@ -36,10 +46,21 @@ if extensions_dir not in sys.path:
 @magics_class
 class MyMagics(Magics):
 
+
+    def _check_bot_available(self):
+        if not bots or 'pythongpt' not in bots:
+            print("ChatGPT bot not available. Please check your configuration.")
+            return False
+        return True
+
+
     @line_magic
     def ask(self, line):
         "My line magic function"
         # Implementation of your function here
+        if not self._check_bot_available():
+            return
+
         functions = [{
             "name": "python",
             "description": "Execute Python code in the REPL.",
@@ -103,6 +124,9 @@ def start_capture(*args, **kwargs):
 
 def stop_capture(*args, **kwargs):
     # sys.stdout = sys.__stdout__
+    if not bots:
+        return
+
     sys.stdout = sys.stdout.stdout
 
     ipython = get_ipython()
@@ -145,7 +169,8 @@ def stop_capture(*args, **kwargs):
                                            value=sys.last_value,
                                            tb=sys.last_traceback))
             format_turn_str = f">>> {recent_input}\n{recent_output}"
-            bots['pythongpt']['identity'].add_to_conversation(format_turn_str, role="user")
+            if bots and 'pythongpt' in bots:
+                bots['pythongpt']['identity'].add_to_conversation(format_turn_str, role="user")
             __last_exception = current_trace
 
 

@@ -3,7 +3,6 @@
 init-vim() {
 	current_folder=$(pwd)
 
-
 	git clone git@github.com:universal-ctags/ctags.git
 	cd ctags || exit
 	./autogen.sh
@@ -41,14 +40,14 @@ init-vim() {
 }
 
 if command -v lsb_release >/dev/null 2>&1; then
-    RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
+	RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
 else
-    if [ -f /etc/issue ]; then
-        RELEASE=$(cat /etc/issue | awk '{print $1}' | head -n1)
-    else
-        echo "Cannot determine distribution"
-        exit 1
-    fi
+	if [ -f /etc/issue ]; then
+		RELEASE=$(cat /etc/issue | awk '{print $1}' | head -n1)
+	else
+		echo "Cannot determine distribution"
+		exit 1
+	fi
 fi
 
 echo "Distribution: $RELEASE"
@@ -83,50 +82,49 @@ if [[ ! -d ~/Application/PathPicker ]]; then
 fi
 
 # if brew not install, install home brew
-if ! command -v brew &> /dev/null; then
+if ! command -v brew &>/dev/null; then
 	echo "Brew not found. Installing..."
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    echo >> ~/.bashrc
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+	echo >>~/.bashrc
+	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >>~/.bashrc
+	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 else
 	echo "Brew is already installed"
 fi
 
 # install aichat node go if not installed
-if ! command -v aichat &> /dev/null; then
+if ! command -v aichat &>/dev/null; then
 	echo "Aichat not found. Installing..."
 	brew install aichat
 else
 	echo "Aichat is already installed"
 fi
 
-if ! command -v node &> /dev/null; then
+if ! command -v node &>/dev/null; then
 	echo "Node not found. Installing..."
 	brew install node
 else
 	echo "Node is already installed"
 fi
 
-if ! command -v go &> /dev/null; then
+if ! command -v go &>/dev/null; then
 	echo "Go not found. Installing..."
 	brew install go
 else
 	echo "Go is already installed"
 fi
 
-
-if ! command -v fd &> /dev/null; then
+if ! command -v fd &>/dev/null; then
 	echo "fd not found. Installing..."
 	brew install fd
 else
 	echo "fd is already installed"
 fi
 
-if [ ! -d ~/Application/snippets ]
-then
-    git clone git@github.com:gfgkmn/snippets.git
+if [ ! -d ~/Application/snippets ]; then
+	git clone git@github.com:gfgkmn/snippets.git
 	cp -r snippets ~/Application/snippets
+	pip install -r ~/Application/snippets/requirements.txt
 fi
 
 if [[ ! -d ~/Application/fzf ]]; then
@@ -142,7 +140,6 @@ if [[ ! -d ~/Application/ycmd ]]; then
 	git submodule update --init --recursive
 	python build.py --all
 fi
-
 
 if [[ ! -f ~/Application/bin/json_probe ]]; then
 	cp json_probe ~/Application/bin/
@@ -214,10 +211,10 @@ fi
 git config --global user.email "gfgkmn@gmail.com"
 git config --global user.name "yuhe"
 
-if ! command -v atuin &> /dev/null; then
-    echo "Atuin not found. Installing..."
-    curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | bash
-    source $HOME/.atuin/bin/env
+if ! command -v atuin &>/dev/null; then
+	echo "Atuin not found. Installing..."
+	curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | bash
+	source $HOME/.atuin/bin/env
 else
-    echo "Atuin is already installed"
+	echo "Atuin is already installed"
 fi
