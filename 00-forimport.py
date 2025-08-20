@@ -1,14 +1,10 @@
 import json
-import copy
 import os
 import re
 import sys
 import traceback
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import seaborn as sns
 from IPython.paths import get_ipython_dir
 
 
@@ -17,14 +13,12 @@ def custom_formatwarning(message, category, filename, lineno, line=None):
     return f'{message}\n'
 
 
-import seaborn as sns
-from ipykernel.iostream import OutStream
-from IPython.core.getipython import get_ipython
-from IPython.core.magic import (Magics, line_magic, magics_class, register_line_magic)
 from chatgpt_v3 import Chatbot
+from IPython.core.getipython import get_ipython
+from IPython.core.magic import Magics, line_magic, magics_class
 
 __configpath = os.path.join(os.getenv('HOME'), '.config', 'chatgptel.json')
-# Sanity check for config file
+# json check for config file
 if not os.path.exists(__configpath):
     print(f"Warning: Configuration file not found at {__configpath}")
     print("Please create the chatgptel.json configuration file to use ChatGPT features.")
@@ -36,6 +30,7 @@ else:
     except (json.JSONDecodeError, KeyError) as e:
         print(f"Error loading configuration file: {e}")
         bots = {}
+
 __history_len = 0
 __last_exception = None
 
@@ -43,16 +38,15 @@ extensions_dir = os.path.join(get_ipython_dir(), "extensions")
 if extensions_dir not in sys.path:
     sys.path.insert(0, extensions_dir)
 
+
 @magics_class
 class MyMagics(Magics):
-
 
     def _check_bot_available(self):
         if not bots or 'pythongpt' not in bots:
             print("ChatGPT bot not available. Please check your configuration.")
             return False
         return True
-
 
     @line_magic
     def ask(self, line):
@@ -170,7 +164,8 @@ def stop_capture(*args, **kwargs):
                                            tb=sys.last_traceback))
             format_turn_str = f">>> {recent_input}\n{recent_output}"
             if bots and 'pythongpt' in bots:
-                bots['pythongpt']['identity'].add_to_conversation(format_turn_str, role="user")
+                bots['pythongpt']['identity'].add_to_conversation(format_turn_str,
+                                                                  role="user")
             __last_exception = current_trace
 
 
