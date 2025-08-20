@@ -4,49 +4,45 @@ c.InteractiveShellApp.exec_lines.append('%autoreload 2')
 
 c.InteractiveShellApp.exec_lines = [
     """
-    def _pb_cmd(self, arg):
-        '''pb <tensor>: Probe PyTorch tensor details.'''
+    def pb_cmd(self, arg):
+        '''pb <variable>: Probe any variable with enhanced type inspection.
+
+        Examples:
+            pb tensor     # Probe a PyTorch tensor
+            pb my_dict    # Probe a dictionary
+            pb model      # Probe a model object
+            pb arr        # Probe a NumPy array
+        '''
         try:
+            # Import locally to avoid circular imports
             import torch
+            import numpy as np
             from explorer import get_type
-            tensor = self.curframe_locals.get(arg)
-            if tensor is None:
-                tensor = eval(arg, self.curframe.f_globals, self.curframe_locals)
 
-            if not isinstance(tensor, torch.Tensor):
-                # print(f"'{arg}' is not a PyTorch Tensor.")
-                # print the arg as it originally was
-                print(f"'{arg}' is not a PyTorch Tensor.")
-                get_type(tensor)
-                return
+            # Try to get the variable
+            obj = self.curframe_locals.get(arg)
+            if obj is None:
+                try:
+                    obj = eval(arg, self.curframe.f_globals, self.curframe_locals)
+                except:
+                    print(f"Error: '{arg}' not found in current scope.")
+                    return
 
-            print(f"Tensor information:")
-            print(f"  Shape: {tensor.shape}")
-            print(f"  Dtype: {tensor.dtype}")
-            print(f"  Device: {tensor.device}")
-            print(f"  Memory usage: {tensor.nelement() * tensor.element_size()} bytes")
-            print(f"  Requires gradient: {tensor.requires_grad}")
-            print(f"  Is contiguous: {tensor.is_contiguous()}")
-            print(f"  Sum: {tensor.sum().item()}")
-
-            # Check for NaN/Inf values
-            if tensor.dtype.is_floating_point:
-                has_nan = torch.isnan(tensor).any().item()
-                has_inf = torch.isinf(tensor).any().item()
-                print(f"  Contains NaN: {has_nan}")
-                print(f"  Contains Inf: {has_inf}")
-
-            # Print statistics if it's a floating point tensor
-            if tensor.dtype.is_floating_point:
-                print(f"  Min value: {tensor.min().item()}")
-                print(f"  Max value: {tensor.max().item()}")
-                print(f"  Mean value: {tensor.mean().item()}")
-                print(f"  Std deviation: {tensor.std().item()}")
+            # Use our enhanced get_type function
+            get_type(obj)
 
         except Exception as e:
-            print(f"Error probing tensor '{arg}': {e}")
+            print(f"Error probing '{arg}': {e}")
+            import traceback
+            traceback.print_exc()
 
-    import IPython.terminal.debugger
-    IPython.terminal.debugger.TerminalPdb.do_pb = _pb_cmd
+    # Install the pb command into IPdb
+    try:
+        import IPython.terminal.debugger
+        IPython.terminal.debugger.TerminalPdb.do_pb = pb_cmd
+        # Also add help for the command
+        IPython.terminal.debugger.TerminalPdb.help_pb = lambda self: print(pb_cmd.__doc__)
+    except ImportError:
+        pass
     """
 ]
