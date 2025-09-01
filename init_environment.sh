@@ -142,30 +142,30 @@ if [[ ! -d ~/Application/ycmd ]]; then
 fi
 
 if [[ ! -f ~/Application/bin/json_probe ]]; then
-	cp json_probe ~/Application/bin/
+	cp ./bin/json_probe ~/Application/bin/
 	chmod +x ~/Application/bin/json_probe
 fi
 if [[ ! -f ~/Application/bin/fasd ]]; then
-	cp fasd ~/Application/bin/
+	cp ./bin/fasd ~/Application/bin/
 fi
 if [[ ! -f ~/Application/bin/check_gpu.py ]]; then
-	cp check_gpu.py ~/Application/bin/
+	cp ./bin/check_gpu.py ~/Application/bin/
 fi
 if [[ ! -f ~/Application/bin/monitor.sh ]]; then
-	cp monitor.sh ~/Application/bin/
+	cp ./bin/monitor.sh ~/Application/bin/
 fi
 if [[ ! -f ~/Application/bin/imgcat ]]; then
-	cp imgcat ~/Application/bin/
+	cp ./bin/imgcat ~/Application/bin/
 fi
 if [[ ! -f ~/Application/bin/pbcopy ]]; then
-	cp pbcopy ~/Application/bin/
+	cp ./bin/pbcopy ~/Application/bin/
 	chmod +x ~/Application/bin/pbcopy
 fi
 if [[ ! -f ~/Application/bin/display_gpu_info ]]; then
-	cp display_gpu_info ~/Application/bin/
+	cp ./bin/display_gpu_info ~/Application/bin/
 fi
 if [[ ! -f ~/Application/bin/tableprobe ]]; then
-	cp tableprobe ~/Application/bin/
+	cp ./bin/tableprobe ~/Application/bin/
 fi
 
 if [[ ! -f ~/.pip/pip.conf ]]; then
