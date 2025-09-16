@@ -81,6 +81,11 @@ if [[ ! -d ~/Application/PathPicker ]]; then
 	ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
 fi
 
+
+if [[ ! -d ~/.tmux-jump ]]; then
+	git clone https://github.com/schasse/tmux-jump ~/.tmux-jump
+fi
+
 # if brew not install, install home brew
 if ! command -v brew &>/dev/null; then
 	echo "Brew not found. Installing..."
@@ -189,6 +194,11 @@ fi
 
 if [[ ! -d ~/.inputrc ]]; then
 	cp .inputrc ~/
+fi
+
+
+if [[ ! -d ~/.tmux.conf ]]; then
+	cp .tmux.conf ~/
 fi
 
 if [[ ! -f ~/.iterm2_shell_integration.bash ]]; then
