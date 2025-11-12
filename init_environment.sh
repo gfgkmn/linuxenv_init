@@ -128,7 +128,7 @@ fi
 
 if [ ! -d ~/Application/snippets ]; then
 	git clone git@github.com:gfgkmn/snippets.git
-	cp -r snippets ~/Application/snippets
+	cp -R snippets ~/Application/snippets
 	pip install -r ~/Application/snippets/requirements.txt
 fi
 
@@ -192,12 +192,12 @@ if [ ! -d ~/.ipython/extensions ]; then
 	cp -R extensions ~/.ipython/
 fi
 
-if [[ ! -d ~/.inputrc ]]; then
+if [[ ! -f ~/.inputrc ]]; then
 	cp .inputrc ~/
 fi
 
 
-if [[ ! -d ~/.tmux.conf ]]; then
+if [[ ! -f ~/.tmux.conf ]]; then
 	cp .tmux.conf ~/
 fi
 
@@ -207,14 +207,14 @@ fi
 
 if [[ ! -f ~/.ssh/id_rsa ]]; then
 	ssh-keygen -t rsa -N ''
-	cat >>~/.ssh/authorized_keys <<eof
-	ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw== gfgkmn@gmail.com
-eof
+	cat >>~/.ssh/authorized_keys <<EOF
+ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw== gfgkmn@gmail.com
+EOF
 
 	chmod 600 ~/.ssh/authorized_keys
 fi
 
-if [[ ! -f ~/Application/mailtemplete ]]; then
+if [[ ! -d ~/Application/mailtemplete ]]; then
 	cp -r ./mailtemplete ~/Application/
 fi
 
