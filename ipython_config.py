@@ -1,6 +1,11 @@
 c = get_config()
 c.InteractiveShellApp.exec_lines.append('%reload_ext autoreload')
 c.InteractiveShellApp.exec_lines.append('%autoreload 2')
+c.TerminalInteractiveShell.editing_mode = 'vi'
+c.TerminalInteractiveShell.emacs_bindings_in_vi_insert_mode = False
+c.TerminalInteractiveShell.timeoutlen = 0.5
+c.TerminalInteractiveShell.prompt_includes_vi_mode = False
+c.TerminalInteractiveShell.ttimeoutlen = 0.01
 
 c.InteractiveShellApp.exec_lines = [
     """
