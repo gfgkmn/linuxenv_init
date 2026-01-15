@@ -39,38 +39,26 @@ init-vim() {
 	fi
 }
 
-if command -v lsb_release >/dev/null 2>&1; then
-	RELEASE=$(lsb_release -a | grep Distributor | awk -F " " '{print $3}')
+# if brew not install, install home brew first (moved up to use brew for dependencies)
+if ! command -v brew &>/dev/null; then
+	echo "Brew not found. Installing..."
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	echo >>~/.bashrc
+	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >>~/.bashrc
+	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 else
-	if [ -f /etc/issue ]; then
-		RELEASE=$(cat /etc/issue | awk '{print $1}' | head -n1)
-	else
-		echo "Cannot determine distribution"
-		exit 1
-	fi
+	echo "Brew is already installed"
 fi
 
-echo "Distribution: $RELEASE"
-
-if [[ "RedHatEnterpriseServer" = "$RELEASE" || "CentOS" = "$RELEASE" ]]; then
-	sudo yum install ctags
-	sudo yum install build-essential cmake
-	sudo yum install python-dev python3-dev
-	sudo yum install npm mono-devel openjdk-8-jre
-	sudo yum install mutt msmtp
-	sudo yum install epel-release
-	sudo yum install the_silver_searcher
-	sudo yum install xclip
-else
-	sudo apt-get install -y build-essential cmake
-	sudo apt-get install -y python-dev python3-dev
-	sudo apt-get install -y libjansson-dev # ctags needs json
-	sudo apt-get install -y npm mono-devel openjdk-8-jre
-	sudo apt-get install -y mutt msmtp jq
-	sudo apt-get install -y silversearcher-ag
-	sudo apt-get install -y gcc make pkg-config autoconf automake python3-docutils libseccomp-dev libjansson-dev libyaml-dev libxml2-dev
-	sudo apt-get install -y cargo
-fi
+# Install dependencies via brew (no sudo required)
+echo "Installing dependencies via Homebrew..."
+brew install cmake
+brew install jansson
+brew install jq
+brew install the_silver_searcher
+brew install autoconf automake pkg-config
+brew install libyaml
+brew install rust
 
 if [ ! -d ~/Application/bin ]; then
 	mkdir -p ~/Application/bin
@@ -84,17 +72,6 @@ fi
 
 if [[ ! -d ~/.tmux-jump ]]; then
 	git clone https://github.com/schasse/tmux-jump ~/.tmux-jump
-fi
-
-# if brew not install, install home brew
-if ! command -v brew &>/dev/null; then
-	echo "Brew not found. Installing..."
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	echo >>~/.bashrc
-	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >>~/.bashrc
-	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-else
-	echo "Brew is already installed"
 fi
 
 # install aichat node go if not installed
