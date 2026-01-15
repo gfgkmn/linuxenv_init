@@ -116,9 +116,9 @@ fi
 
 # start from here
 
-# export PATH=$HOME/Application/bin:/snap/bin:$PATH:/usr/local/cuda-8.0/bin:/home/yuhe/.local/bin
-export PATH=$HOME/Application/bin:/snap/bin:$PATH:/usr/local/cuda-10.0/bin:/home/yuhe/.local/bin
-export PYTHONPATH=$PYTHONPATH:~/Application/snippets/
+# export PATH=$HOME/Applications/bin:/snap/bin:$PATH:/usr/local/cuda-8.0/bin:/home/yuhe/.local/bin
+export PATH=$HOME/Applications/bin:/snap/bin:$PATH:/usr/local/cuda-10.0/bin:/home/yuhe/.local/bin
+export PYTHONPATH=$PYTHONPATH:~/Applications/snippets/
 
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 # export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/cuda/lib64
@@ -405,4 +405,4 @@ alias setitemplot='export MPLBACKEND="module://itermplot" && export ITERMPLOT=rv
 alias unsetitemplot='unset MPLBACKEND && unset ITERMPLOT'
 
 # added by Miniconda3 installer
-export PATH="/home/yuhe/Application/python36/bin:$PATH"
+export PATH="/home/yuhe/Applications/python36/bin:$PATH"

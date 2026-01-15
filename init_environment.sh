@@ -6,7 +6,7 @@ init-vim() {
 	git clone git@github.com:universal-ctags/ctags.git
 	cd ctags || exit
 	./autogen.sh
-	./configure --prefix=/home/yuhe/Application --enable-json # defaults to /usr/local
+	./configure --prefix=/home/yuhe/Applications --enable-json # defaults to /usr/local
 	make
 	make install # may require extra privileges depending on where to install
 
@@ -60,13 +60,13 @@ brew install autoconf automake pkg-config
 brew install libyaml
 brew install rust
 
-if [ ! -d ~/Application/bin ]; then
-	mkdir -p ~/Application/bin
+if [ ! -d ~/Applications/bin ]; then
+	mkdir -p ~/Applications/bin
 fi
-if [[ ! -d ~/Application/PathPicker ]]; then
+if [[ ! -d ~/Applications/PathPicker ]]; then
 	git clone https://github.com/facebook/PathPicker.git
-	mv PathPicker ~/Application
-	ln -s ~/Application/PathPicker/fpp ~/Application/bin/fpp
+	mv PathPicker ~/Applications
+	ln -s ~/Applications/PathPicker/fpp ~/Applications/bin/fpp
 fi
 
 
@@ -103,51 +103,51 @@ else
 	echo "fd is already installed"
 fi
 
-if [ ! -d ~/Application/snippets ]; then
+if [ ! -d ~/Applications/snippets ]; then
 	git clone git@github.com:gfgkmn/snippets.git
-	cp -R snippets ~/Application/snippets
-	pip install -r ~/Application/snippets/requirements.txt
+	cp -R snippets ~/Applications/snippets
+	pip install -r ~/Applications/snippets/requirements.txt
 fi
 
-if [[ ! -d ~/Application/fzf ]]; then
+if [[ ! -d ~/Applications/fzf ]]; then
 	git clone --depth 1 https://github.com/junegunn/fzf.git
-	mv fzf ~/Application/
-	~/Application/fzf/install
+	mv fzf ~/Applications/
+	~/Applications/fzf/install
 fi
 
-if [[ ! -d ~/Application/ycmd ]]; then
+if [[ ! -d ~/Applications/ycmd ]]; then
 	git clone git@github.com:gfgkmn/ycmd.git
-	mv ycmd ~/Application
-	cd ~/Application/ycmd || exit
+	mv ycmd ~/Applications
+	cd ~/Applications/ycmd || exit
 	git submodule update --init --recursive
 	python build.py --all
 fi
 
-if [[ ! -f ~/Application/bin/json_probe ]]; then
-	cp ./bin/json_probe ~/Application/bin/
-	chmod +x ~/Application/bin/json_probe
+if [[ ! -f ~/Applications/bin/json_probe ]]; then
+	cp ./bin/json_probe ~/Applications/bin/
+	chmod +x ~/Applications/bin/json_probe
 fi
-if [[ ! -f ~/Application/bin/fasd ]]; then
-	cp ./bin/fasd ~/Application/bin/
+if [[ ! -f ~/Applications/bin/fasd ]]; then
+	cp ./bin/fasd ~/Applications/bin/
 fi
-if [[ ! -f ~/Application/bin/check_gpu.py ]]; then
-	cp ./bin/check_gpu.py ~/Application/bin/
+if [[ ! -f ~/Applications/bin/check_gpu.py ]]; then
+	cp ./bin/check_gpu.py ~/Applications/bin/
 fi
-if [[ ! -f ~/Application/bin/monitor.sh ]]; then
-	cp ./bin/monitor.sh ~/Application/bin/
+if [[ ! -f ~/Applications/bin/monitor.sh ]]; then
+	cp ./bin/monitor.sh ~/Applications/bin/
 fi
-if [[ ! -f ~/Application/bin/imgcat ]]; then
-	cp ./bin/imgcat ~/Application/bin/
+if [[ ! -f ~/Applications/bin/imgcat ]]; then
+	cp ./bin/imgcat ~/Applications/bin/
 fi
-if [[ ! -f ~/Application/bin/pbcopy ]]; then
-	cp ./bin/pbcopy ~/Application/bin/
-	chmod +x ~/Application/bin/pbcopy
+if [[ ! -f ~/Applications/bin/pbcopy ]]; then
+	cp ./bin/pbcopy ~/Applications/bin/
+	chmod +x ~/Applications/bin/pbcopy
 fi
-if [[ ! -f ~/Application/bin/display_gpu_info ]]; then
-	cp ./bin/display_gpu_info ~/Application/bin/
+if [[ ! -f ~/Applications/bin/display_gpu_info ]]; then
+	cp ./bin/display_gpu_info ~/Applications/bin/
 fi
-if [[ ! -f ~/Application/bin/tableprobe ]]; then
-	cp ./bin/tableprobe ~/Application/bin/
+if [[ ! -f ~/Applications/bin/tableprobe ]]; then
+	cp ./bin/tableprobe ~/Applications/bin/
 fi
 
 if [[ ! -f ~/.pip/pip.conf ]]; then
@@ -191,8 +191,8 @@ EOF
 	chmod 600 ~/.ssh/authorized_keys
 fi
 
-if [[ ! -d ~/Application/mailtemplete ]]; then
-	cp -r ./mailtemplete ~/Application/
+if [[ ! -d ~/Applications/mailtemplete ]]; then
+	cp -r ./mailtemplete ~/Applications/
 fi
 
 git config --global user.email "gfgkmn@gmail.com"

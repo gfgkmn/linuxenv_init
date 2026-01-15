@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# check_status=$(python /home/work/Application/bin/check_gpu.py)
+# check_status=$(python /home/work/Applications/bin/check_gpu.py)
 # main_pids=$(pgrep -f dialog_websockets)
 
 # if [ -z "$check_status"  ] && [ ! -f /home/yuhe/mail_already  ]; then
@@ -22,8 +22,8 @@
 
 # PROCESS_INFO=$(pgrep --euid yuhe python | wc -l)
 PROCESS_INFO=$(pgrep -f xiaomeng/continue | wc -l)
-if [ "$PROCESS_INFO" -ne 9 ] && [ ! -f /home/work/Application/runflags/mail_already ]; then
+if [ "$PROCESS_INFO" -ne 9 ] && [ ! -f /home/work/Applications/runflags/mail_already ]; then
     # /usr/local/bin/terminal-notifier -title '💰' -message 'predict run over'
-    mutt -s 'deepspeed rl model on work-machine is done or down' gfgkmn@163.com </home/work/Application/runflags/mailtemplete
-    touch /home/work/Application/runflags/mail_already
+    mutt -s 'deepspeed rl model on work-machine is done or down' gfgkmn@163.com </home/work/Applications/runflags/mailtemplete
+    touch /home/work/Applications/runflags/mail_already
 fi
