@@ -1,0 +1,1 @@
+Run `pngpaste /tmp/claude_clip_$(date +%s).png` and then read the resulting image file. Ask me what I'd like to do with it.
