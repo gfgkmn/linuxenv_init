@@ -34,15 +34,6 @@
       "Bash(uniq *)"
     ],
     "deny": [
-      "Bash(rm *)",
-      "Bash(curl *)",
-      "Bash(wget *)",
-      "Bash(pip install *)",
-      "Bash(chmod *)",
-      "Bash(chown *)",
-      "Bash(sudo *)",
-      "Bash(ssh *)",
-      "Bash(scp *)",
       "Read(**/.env)",
       "Read(**/id_rsa)",
       "Read(**/*.pem)"
