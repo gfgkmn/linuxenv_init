@@ -133,7 +133,7 @@ def stop_capture(*args, **kwargs):
             recent_input = ipython.user_ns['_ih'][cell_index]
             if recent_input is None or recent_input == '':
                 pass
-            elif not re.match('^\s*get_ipython\(\).run_line_magic\(\'ask', recent_input):
+            elif not re.match(r'^\s*get_ipython\(\).run_line_magic\(\'ask', recent_input):
                 format_turn_str = f">>> {recent_input}\n{recent_output}" if recent_output is not None else f">>> {recent_input}"
                 bots['pythongpt']['identity'].add_to_conversation(format_turn_str,
                                                                   role="user")
