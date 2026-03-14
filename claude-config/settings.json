@@ -31,7 +31,8 @@
       "Bash(sed *)",
       "Bash(awk *)",
       "Bash(sort *)",
-      "Bash(uniq *)"
+      "Bash(uniq *)",
+      "Bash(tmux capture-pane:*)"
     ],
     "deny": [
       "Read(**/.env)",
