@@ -139,6 +139,9 @@ fi
 if [[ ! -f ~/Applications/bin/imgcat ]]; then
 	cp ./bin/imgcat ~/Applications/bin/
 fi
+if [[ ! -f ~/Applications/bin/rmate ]]; then
+	cp ./bin/rmate ~/Applications/bin/
+fi
 if [[ ! -f ~/Applications/bin/pbcopy ]]; then
 	cp ./bin/pbcopy ~/Applications/bin/
 	chmod +x ~/Applications/bin/pbcopy
