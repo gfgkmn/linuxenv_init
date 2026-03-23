@@ -1,8 +1,12 @@
 ---
-description: Switch permission preset (strict/permissive)
-allowedArgs: strict, permissive, toggle
+description: Switch permission preset (permissive/audit/strict)
+allowedArgs: permissive, audit, strict, toggle
 ---
 
-Switch permission preset. Strict disables auto-allowed Write/Edit/MultiEdit; permissive re-enables them.
+Switch permission preset.
+
+- **permissive**: Write/Edit auto-allowed, no review
+- **audit**: Write/Edit auto-allowed, Emacs review each edit (C-c C-c approve, C-c C-k reject)
+- **strict**: Write/Edit require Claude Code approval prompt
 
 $`python ~/.claude/scripts/preset_switch.py $ARGUMENTS 2>/dev/null || echo "Script not found at ~/.claude/scripts/preset_switch.py"`
