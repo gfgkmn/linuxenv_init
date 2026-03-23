@@ -143,13 +143,17 @@
         (claude-audit--cleanup-and-close)))))
 
 (defun claude-audit-reject ()
-  "Reject the edit."
+  "Reject the edit with a reason."
   (interactive)
-  (if claude-audit--is-rmate
-      (claude-audit--rmate-decide "reject")
-    (claude-audit--write-decision "reject")
-    (message "❌ Rejected")
-    (claude-audit--cleanup-and-close)))
+  (let ((reason (read-string "Reject reason: ")))
+    (when (string-empty-p reason)
+      (setq reason "rejected"))
+    (let ((decision (format "reject||%s" reason)))
+      (if claude-audit--is-rmate
+          (claude-audit--rmate-decide decision)
+        (claude-audit--write-decision decision)
+        (message "❌ Rejected: %s" reason)
+        (claude-audit--cleanup-and-close)))))
 
 ;; ── View toggle ──────────────────────────────────────────────────────────
 

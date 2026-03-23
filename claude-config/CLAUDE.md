@@ -15,6 +15,17 @@
 - **Treat every failure as a signal.** Never blindly retry or guess. When something fails, stop and discuss with the human what went wrong and why. Only proceed when you are confident about the root cause and the fix.
 - **Three strikes rule.** If three attempts at solving the same problem fail, stop immediately. Step back, rethink from first principles, and discuss with the human before trying anything else.
 
+## Hard Rule: No Edits to Working Code Without Research
+- Existing working code encodes hard-won knowledge. Before modifying it:
+  1. **RESEARCH** — Use Agent tool to investigate WHY the current code works (read source, search docs)
+  2. **EXPLAIN** — Present findings to the human BEFORE proposing changes
+  3. **PLAN** — Wait for human to confirm and approve the approach
+  4. **CODE** — Only then write code
+- NEVER edit working code you haven't researched
+- NEVER retry a failed approach without root cause analysis
+- 3 failures = STOP. Research or ask human. No more guessing.
+- If the human rejects an edit (audit hook rejection), STOP immediately. Do not attempt a variation. Ask the human what was wrong before trying again.
+
 ## macOS Shell Aliases & Environment
 - `cat` → `bat`, `bat` → `/bin/cat` (swapped!)
 - `grep` → `ggrep -i` (case-insensitive GNU grep)

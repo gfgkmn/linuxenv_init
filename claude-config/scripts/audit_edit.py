@@ -160,14 +160,32 @@ def open_in_editor(tmp_path: str):
 
 # ── Decision handling ──────────────────────────────────────────────────────
 
-def read_decision_file(tmp_path: str) -> str:
-    """Read decision from .decision file (emacsclient transport)."""
+def parse_decision(raw: str) -> tuple[str, str]:
+    """Parse decision string, which may include a reason.
+
+    Format: 'approve' or 'reject||reason text'
+    Returns (decision, reason).
+    """
+    if "||" in raw:
+        decision, reason = raw.split("||", 1)
+        return decision.strip(), reason.strip()
+    return raw.strip(), ""
+
+
+def read_decision_file(tmp_path: str) -> tuple[str, str]:
+    """Read decision from .decision file (emacsclient transport).
+
+    Returns (decision, reason).
+    """
     decision_file = tmp_path + ".decision"
     try:
-        decision = Path(decision_file).read_text().strip()
-        return decision if decision in ("approve", "change", "reject") else "unknown"
+        raw = Path(decision_file).read_text().strip()
+        decision, reason = parse_decision(raw)
+        if decision in ("approve", "change", "reject"):
+            return decision, reason
+        return "unknown", ""
     except OSError:
-        return "unknown"
+        return "unknown", ""
     finally:
         try:
             os.unlink(decision_file)
@@ -175,10 +193,10 @@ def read_decision_file(tmp_path: str) -> str:
             pass
 
 
-def read_rmate_decision(tmp_path: str) -> tuple[str, str]:
+def read_rmate_decision(tmp_path: str) -> tuple[str, str, str]:
     """Read decision from file content sentinel (rmate transport).
 
-    Returns (decision, remaining_content).
+    Returns (decision, reason, remaining_content).
     rmate may prepend whitespace/newlines, so we strip before checking.
     """
     content = Path(tmp_path).read_text()
@@ -187,23 +205,28 @@ def read_rmate_decision(tmp_path: str) -> tuple[str, str]:
     if stripped.startswith(DECISION_SENTINEL):
         first_nl = stripped.index("\n")
         decision_line = stripped[:first_nl].strip()
-        decision = decision_line.split(":", 1)[1].strip()
+        raw_decision = decision_line.split(":", 1)[1].strip()
         remaining = stripped[first_nl + 1:]
+        decision, reason = parse_decision(raw_decision)
         if decision in ("approve", "change", "reject"):
-            return decision, remaining
-    return "reject", content
+            return decision, reason, remaining
+    return "reject", "", content
 
 
 def handle_approve():
     print(json.dumps({"decision": "allow"}))
 
 
-def handle_reject():
+def handle_reject(reason: str = ""):
+    if reason:
+        msg = f"Rejected by user: {reason}"
+    else:
+        msg = "Rejected by user during audit review"
     print(json.dumps({
         "decision": "block",
-        "reason": "Rejected by user during audit review"
+        "reason": msg
     }))
-    print("Rejected by user in audit review", file=sys.stderr)
+    print(msg, file=sys.stderr)
     sys.exit(2)
 
 
@@ -325,11 +348,11 @@ def main():
                 open_in_emacs(tmp_path)
             show_terminal()
 
-            decision = read_decision_file(tmp_path)
+            decision, reason = read_decision_file(tmp_path)
             if decision == "approve":
                 handle_approve()
             elif decision == "reject":
-                handle_reject()
+                handle_reject(reason)
             elif decision == "change":
                 if is_diff:
                     handle_edit_change(tool_input, tmp_path)
@@ -345,11 +368,11 @@ def main():
             open_rmate_audit(tmp_path, original_path, tool_name)
 
             # rmate --wait returned — read decision from file content
-            decision, remaining = read_rmate_decision(tmp_path)
+            decision, reason, remaining = read_rmate_decision(tmp_path)
             if decision == "approve":
                 handle_approve()
             elif decision == "reject":
-                handle_reject()
+                handle_reject(reason)
             elif decision == "change":
                 if is_diff:
                     handle_edit_change(tool_input, tmp_path, content_override=remaining)
