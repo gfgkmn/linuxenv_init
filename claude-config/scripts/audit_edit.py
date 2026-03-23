@@ -1,18 +1,24 @@
 #!/usr/bin/env python
 """PreToolUse hook: open edit/write content in Emacs for audit.
 
+Supports two transports:
+  - emacsclient (local): split view via claude-audit-open-split
+  - rmate (remote): sends file via rmate --wait with metadata in display-name
+
 Uses claude-audit.el minor mode in Emacs for a clean review experience:
-  C-c C-c  Approve (auto-detects modifications for Write)
+  C-c C-c  Approve (auto-detects modifications)
   C-c C-k  Reject
+  C-c C-v  Toggle diff/focus view
+  ]c / [c  Navigate changes
 
 Edit/MultiEdit: split view — original file (left) + after version (right).
-  Both windows have full syntax highlighting and LSP support.
 Write: shows actual file content with proper extension (editable).
 """
 
 import json
 import os
 import shlex
+import socket
 import subprocess
 import sys
 import tempfile
@@ -22,15 +28,29 @@ IS_MACOS = sys.platform == "darwin"
 EDITOR = os.environ.get("EDITOR", "vim")
 AUDIT_MARKER = Path.home() / ".claude" / ".audit-enabled"
 
+# Sentinel line used to encode decision in file content (for rmate transport)
+DECISION_SENTINEL = "# __CLAUDE_AUDIT_DECISION__:"
+
 
 def is_audit_enabled() -> bool:
     return AUDIT_MARKER.exists()
 
 
+# ── Editor detection ──────────────────────────────────────────────────────
+
+def is_emacs_editor() -> bool:
+    return "emacsclient" in EDITOR.lower() or (
+        "emacs" in EDITOR.lower() and "rmate" not in EDITOR.lower()
+    )
+
+
+def is_rmate_editor() -> bool:
+    return "rmate" in EDITOR.lower()
+
+
 # ── Build "after" content for Edit ─────────────────────────────────────────
 
 def build_after_content(tool_input: dict) -> str:
-    """Build the full file content after applying the edit."""
     file_path = tool_input.get("file_path", "?")
     old_string = tool_input.get("old_string", "")
     new_string = tool_input.get("new_string", "")
@@ -48,7 +68,6 @@ def build_after_content(tool_input: dict) -> str:
 
 
 def build_multiedit_after_content(tool_input: dict) -> str:
-    """Build the full file content after applying all edits."""
     file_path = tool_input.get("file_path", "?")
     edits = tool_input.get("edits", [])
 
@@ -74,7 +93,7 @@ def get_file_extension(tool_input: dict) -> str:
     return ".txt"
 
 
-# ── Window management ──────────────────────────────────────────────────────
+# ── Window management (macOS only) ────────────────────────────────────────
 
 def hide_terminal():
     if IS_MACOS:
@@ -96,7 +115,7 @@ def show_terminal():
 # ── Editor launch ──────────────────────────────────────────────────────────
 
 def open_split_in_emacs(original_path: str, after_path: str):
-    """Open original + after file in Emacs split view."""
+    """Open original + after file in Emacs split view via emacsclient."""
     elisp = f'(claude-audit-open-split "{original_path}" "{after_path}")'
     tty = open("/dev/tty", "r")
     subprocess.run(
@@ -107,26 +126,42 @@ def open_split_in_emacs(original_path: str, after_path: str):
 
 
 def open_in_emacs(tmp_path: str):
-    """Open single file in Emacs with claude-audit-mode."""
+    """Open single file in Emacs with claude-audit-mode via emacsclient."""
     tty = open("/dev/tty", "r")
     subprocess.run(["emacsclient", "-c", tmp_path], stdin=tty, check=True)
     tty.close()
 
 
+def open_rmate_audit(tmp_path: str, original_path: str, tool_name: str):
+    """Open file via rmate --wait with audit metadata in display-name."""
+    hostname = socket.gethostname()
+    try:
+        ip = socket.gethostbyname(hostname)
+    except socket.gaierror:
+        ip = hostname
+
+    # Use || delimiter to avoid conflicts with colons in paths
+    display_name = f"claude-audit||{hostname}||{ip}||{original_path}||{tool_name}"
+
+    tty = open("/dev/tty", "r")
+    subprocess.run(
+        ["rmate", "--wait", "-m", display_name, tmp_path],
+        stdin=tty, timeout=600, check=True
+    )
+    tty.close()
+
+
 def open_in_editor(tmp_path: str):
-    """Open file in $EDITOR (fallback for non-emacs editors)."""
+    """Open file in $EDITOR (fallback for non-emacs/non-rmate editors)."""
     tty = open("/dev/tty", "r")
     subprocess.run(shlex.split(EDITOR) + [tmp_path], stdin=tty, check=True)
     tty.close()
 
 
-def is_emacs_editor() -> bool:
-    return "emacs" in EDITOR.lower()
-
-
 # ── Decision handling ──────────────────────────────────────────────────────
 
-def read_decision(tmp_path: str) -> str:
+def read_decision_file(tmp_path: str) -> str:
+    """Read decision from .decision file (emacsclient transport)."""
     decision_file = tmp_path + ".decision"
     try:
         decision = Path(decision_file).read_text().strip()
@@ -138,6 +173,22 @@ def read_decision(tmp_path: str) -> str:
             os.unlink(decision_file)
         except OSError:
             pass
+
+
+def read_rmate_decision(tmp_path: str) -> tuple[str, str]:
+    """Read decision from file content sentinel (rmate transport).
+
+    Returns (decision, remaining_content).
+    """
+    content = Path(tmp_path).read_text()
+    if content.startswith(DECISION_SENTINEL):
+        first_nl = content.index("\n")
+        decision_line = content[:first_nl].strip()
+        decision = decision_line.split(":", 1)[1].strip()
+        remaining = content[first_nl + 1:]
+        if decision in ("approve", "change", "reject"):
+            return decision, remaining
+    return "reject", content
 
 
 def handle_approve():
@@ -153,9 +204,9 @@ def handle_reject():
     sys.exit(2)
 
 
-def handle_edit_change(tool_input: dict, tmp_path: str):
-    """User modified the 'after' version in split view — apply it directly."""
-    user_content = Path(tmp_path).read_text()
+def handle_edit_change(tool_input: dict, tmp_path: str, content_override: str = None):
+    """User modified the 'after' version — apply it directly."""
+    user_content = content_override if content_override is not None else Path(tmp_path).read_text()
     file_path = tool_input.get("file_path", "?")
     try:
         Path(file_path).write_text(user_content)
@@ -175,9 +226,9 @@ def handle_edit_change(tool_input: dict, tmp_path: str):
     sys.exit(2)
 
 
-def handle_write_change(tool_input: dict, tmp_path: str):
+def handle_write_change(tool_input: dict, tmp_path: str, content_override: str = None):
     """User modified Write content — apply their version."""
-    user_content = Path(tmp_path).read_text()
+    user_content = content_override if content_override is not None else Path(tmp_path).read_text()
     file_path = tool_input.get("file_path", "?")
     try:
         Path(file_path).write_text(user_content)
@@ -197,7 +248,7 @@ def handle_write_change(tool_input: dict, tmp_path: str):
     sys.exit(2)
 
 
-# ── Fallback for non-Emacs editors ────────────────────────────────────────
+# ── Fallback for non-Emacs/non-rmate editors ─────────────────────────────
 
 def handle_fallback_decision(tmp_path: str, original_content: str,
                               tool_name: str, tool_input: dict):
@@ -234,6 +285,7 @@ def main():
     file_path = tool_input.get("file_path", "")
 
     use_emacs = is_emacs_editor()
+    use_rmate = is_rmate_editor()
     ext = get_file_extension(tool_input)
 
     if tool_name == "Edit":
@@ -249,8 +301,8 @@ def main():
         print(json.dumps({"decision": "allow"}))
         return
 
-    # For non-emacs editors, prepend the APPROVE line
-    if not use_emacs:
+    # For plain editors (not emacs/rmate), prepend the APPROVE line
+    if not use_emacs and not use_rmate:
         content = "# APPROVE (delete this line to BLOCK)\n#\n" + content
 
     with tempfile.NamedTemporaryFile(
@@ -260,23 +312,17 @@ def main():
         tmp_path = os.path.realpath(f.name)
 
     try:
-        hide_terminal()
-
         if use_emacs:
+            # ── emacsclient transport ──
+            hide_terminal()
             if is_diff and file_path:
-                # Split view: original (left) + after (right)
                 real_file = os.path.realpath(file_path)
                 open_split_in_emacs(real_file, tmp_path)
             else:
-                # Write: single file view
                 open_in_emacs(tmp_path)
-        else:
-            open_in_editor(tmp_path)
+            show_terminal()
 
-        show_terminal()
-
-        if use_emacs:
-            decision = read_decision(tmp_path)
+            decision = read_decision_file(tmp_path)
             if decision == "approve":
                 handle_approve()
             elif decision == "reject":
@@ -289,11 +335,36 @@ def main():
             else:
                 handle_reject()
                 return
+
+        elif use_rmate:
+            # ── rmate transport ──
+            original_path = os.path.abspath(file_path) if file_path else ""
+            open_rmate_audit(tmp_path, original_path, tool_name)
+
+            # rmate --wait returned — read decision from file content
+            decision, remaining = read_rmate_decision(tmp_path)
+            if decision == "approve":
+                handle_approve()
+            elif decision == "reject":
+                handle_reject()
+            elif decision == "change":
+                if is_diff:
+                    handle_edit_change(tool_input, tmp_path, content_override=remaining)
+                else:
+                    handle_write_change(tool_input, tmp_path, content_override=remaining)
+            else:
+                handle_reject()
+                return
+
         else:
+            # ── Fallback editor ──
+            open_in_editor(tmp_path)
             handle_fallback_decision(tmp_path, content, tool_name, tool_input)
 
-    except (subprocess.CalledProcessError, OSError, KeyboardInterrupt) as e:
-        show_terminal()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+            OSError, KeyboardInterrupt) as e:
+        if use_emacs:
+            show_terminal()
         print(json.dumps({
             "decision": "block",
             "reason": f"Editor error: {e}"
