@@ -130,8 +130,8 @@ def main():
 
     needs_restart = (target == "strict") != (current == "strict")
     if needs_restart:
-        print(f"\n{C_RED}{C_BOLD}⚠  Restart Claude Code now to apply!{C_RESET}")
-        print(f"{C_DIM}   Permission changes require restart. Run /exit then relaunch.{C_RESET}")
+        print(f"\n{C_RED}{C_BOLD}RESTART_REQUIRED{C_RESET}")
+        print(f"{C_DIM}   Permission changes need restart. Exiting — use /resume to continue.{C_RESET}")
     else:
         print(f"\n{C_GREEN}✓ Active immediately (no restart needed){C_RESET}")
 
