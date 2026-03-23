@@ -11,6 +11,9 @@
 ## Working Principles
 - Default to short waits (1-2s) when checking command results, logs, or process output. Most tasks finish near-instantly. Only increase wait time when the task is genuinely long-running (model training, large data loads, builds).
 - For time-consuming or hard-to-reverse tasks (data pipelines, training, deployments, migrations), always start at the smallest viable scale first — tiny data subset, 1 epoch, few rows. Verify correctness, then scale up incrementally. Never jump straight to full scale.
+- **Think before coding.** Do not rush to write code. First discuss the plan, approach, and logic with the human. Only start coding after the human confirms they understand and agree with the plan.
+- **Treat every failure as a signal.** Never blindly retry or guess. When something fails, stop and discuss with the human what went wrong and why. Only proceed when you are confident about the root cause and the fix.
+- **Three strikes rule.** If three attempts at solving the same problem fail, stop immediately. Step back, rethink from first principles, and discuss with the human before trying anything else.
 
 ## macOS Shell Aliases & Environment
 - `cat` → `bat`, `bat` → `/bin/cat` (swapped!)
