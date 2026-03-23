@@ -179,13 +179,16 @@ def read_rmate_decision(tmp_path: str) -> tuple[str, str]:
     """Read decision from file content sentinel (rmate transport).
 
     Returns (decision, remaining_content).
+    rmate may prepend whitespace/newlines, so we strip before checking.
     """
     content = Path(tmp_path).read_text()
-    if content.startswith(DECISION_SENTINEL):
-        first_nl = content.index("\n")
-        decision_line = content[:first_nl].strip()
+    # Strip leading whitespace — rmate protocol may prepend \n
+    stripped = content.lstrip()
+    if stripped.startswith(DECISION_SENTINEL):
+        first_nl = stripped.index("\n")
+        decision_line = stripped[:first_nl].strip()
         decision = decision_line.split(":", 1)[1].strip()
-        remaining = content[first_nl + 1:]
+        remaining = stripped[first_nl + 1:]
         if decision in ("approve", "change", "reject"):
             return decision, remaining
     return "reject", content

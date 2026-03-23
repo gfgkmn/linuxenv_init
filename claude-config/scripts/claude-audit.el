@@ -95,23 +95,27 @@
 
 (defun claude-audit--rmate-decide (decision)
   "Send DECISION back via rmate protocol and close."
-  ;; Prepend sentinel line to buffer content
-  (goto-char (point-min))
-  (insert (format "%s %s\n" claude-audit--decision-sentinel decision))
-  ;; Clean up original buffer
-  (when (and claude-audit--original-buffer
-             (buffer-live-p claude-audit--original-buffer))
-    (with-current-buffer claude-audit--original-buffer
-      (remove-overlays (point-min) (point-max) 'claude-audit t)
-      (when (bound-and-true-p read-only-mode) (read-only-mode -1)))
-    (kill-buffer claude-audit--original-buffer))
-  ;; Save via rmate (sends content including sentinel to remote)
-  (when (fboundp 'rmate-server--save-current)
-    (rmate-server--save-current))
-  ;; Kill buffer (sends close, unblocks rmate --wait on remote)
-  (set-buffer-modified-p nil)
-  (kill-buffer (current-buffer))
-  (message "Audit decision: %s" decision))
+  (let ((rmate-buf (current-buffer))
+        (orig-buf claude-audit--original-buffer))
+    ;; 1. Prepend sentinel line to buffer content
+    (goto-char (point-min))
+    (insert (format "%s %s\n" claude-audit--decision-sentinel decision))
+    ;; 2. Save via rmate FIRST (sends content including sentinel to remote)
+    ;;    Must happen while we're still in the rmate buffer
+    (when (fboundp 'rmate-server--save-current)
+      (rmate-server--save-current))
+    ;; 3. Clean up original buffer (TRAMP)
+    (when (and orig-buf (buffer-live-p orig-buf))
+      (with-current-buffer orig-buf
+        (remove-overlays (point-min) (point-max) 'claude-audit t)
+        (when (bound-and-true-p read-only-mode) (read-only-mode -1)))
+      (kill-buffer orig-buf))
+    ;; 4. Kill rmate buffer (sends close, unblocks rmate --wait on remote)
+    (when (buffer-live-p rmate-buf)
+      (with-current-buffer rmate-buf
+        (set-buffer-modified-p nil)
+        (kill-buffer rmate-buf)))
+    (message "Audit decision: %s" decision)))
 
 (defun claude-audit--cleanup-and-close ()
   "Clean up buffers and close the frame (emacsclient transport)."
