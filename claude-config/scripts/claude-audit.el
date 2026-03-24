@@ -56,6 +56,26 @@
                  (const :tag "Doom workspace" workspace))
   :group 'claude-audit)
 
+(defun claude-audit--setup-frame ()
+  "Size and position the audit frame based on main screen dimensions.
+Uses ~90% of screen width/height, centered on the main display."
+  (when (display-graphic-p)
+    (let* ((attrs (frame-monitor-attributes))
+           (geometry (alist-get 'geometry attrs))
+           (workarea (or (alist-get 'workarea attrs) geometry))
+           (screen-x (nth 0 workarea))
+           (screen-y (nth 1 workarea))
+           (screen-w (nth 2 workarea))
+           (screen-h (nth 3 workarea))
+           ;; Use 90% of screen
+           (target-w (round (* screen-w 0.9)))
+           (target-h (round (* screen-h 0.9)))
+           ;; Center on screen
+           (target-x (+ screen-x (round (* screen-w 0.05))))
+           (target-y (+ screen-y (round (* screen-h 0.05)))))
+      (set-frame-position (selected-frame) target-x target-y)
+      (set-frame-size (selected-frame) target-w target-h t))))
+
 ;; rmate-specific state
 (defvar-local claude-audit--is-rmate nil
   "Non-nil when this audit session uses rmate transport.")
@@ -631,6 +651,9 @@ Respects `claude-audit-open-in' for frame vs workspace mode."
       (setq ws-name (format "audit:%s" (file-name-nondirectory after-file)))
       (+workspace/new ws-name)
       (+workspace/switch-to ws-name))
+    ;; For frame mode: size the frame to match screen
+    (when (eq open-mode 'frame)
+      (claude-audit--setup-frame))
     (delete-other-windows)
     ;; Open original
     (find-file original-file)
