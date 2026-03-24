@@ -42,6 +42,20 @@
 (defvar-local claude-audit--view-mode 'diff
   "Current view mode: `diff' (split) or `focus' (single).")
 
+(defvar-local claude-audit--open-mode 'frame
+  "How this audit session was opened: `frame' or `workspace'.")
+
+(defvar-local claude-audit--workspace-name nil
+  "Name of the workspace created for this audit session.")
+
+(defcustom claude-audit-open-in 'frame
+  "How to open audit views.
+`frame'     — new Emacs frame (default, works with emacsclient -c)
+`workspace' — new Doom workspace in existing frame"
+  :type '(choice (const :tag "New frame" frame)
+                 (const :tag "Doom workspace" workspace))
+  :group 'claude-audit)
+
 ;; rmate-specific state
 (defvar-local claude-audit--is-rmate nil
   "Non-nil when this audit session uses rmate transport.")
@@ -118,17 +132,25 @@
     (message "Audit decision: %s" decision)))
 
 (defun claude-audit--cleanup-and-close ()
-  "Clean up buffers and close the frame (emacsclient transport)."
-  (when (and claude-audit--original-buffer
-             (buffer-live-p claude-audit--original-buffer))
-    (with-current-buffer claude-audit--original-buffer
-      (remove-overlays (point-min) (point-max) 'claude-audit t)
-      (read-only-mode -1))
-    (kill-buffer claude-audit--original-buffer))
-  (let ((frame (selected-frame)))
+  "Clean up buffers and close the frame or workspace (emacsclient transport)."
+  (let ((ws-name claude-audit--workspace-name)
+        (mode claude-audit--open-mode))
+    ;; Clean up original buffer
+    (when (and claude-audit--original-buffer
+               (buffer-live-p claude-audit--original-buffer))
+      (with-current-buffer claude-audit--original-buffer
+        (remove-overlays (point-min) (point-max) 'claude-audit t)
+        (read-only-mode -1))
+      (kill-buffer claude-audit--original-buffer))
+    ;; Clean up after buffer + close frame/workspace
     (set-buffer-modified-p nil)
     (kill-buffer)
-    (delete-frame frame)))
+    (if (eq mode 'workspace)
+        ;; Delete the workspace, switch back to previous
+        (when (and ws-name (fboundp '+workspace/delete))
+          (+workspace/delete ws-name))
+      ;; Delete the frame
+      (delete-frame (selected-frame)))))
 
 (defun claude-audit-approve ()
   "Approve the edit."
@@ -583,38 +605,50 @@ Called as :after advice on `rmate-server--open-buffer'."
 
 ;; ── Split view: emacsclient (local files) ───────────────────────────────
 
-(defun claude-audit-open-split (original-file after-file)
-  "Open ORIGINAL-FILE and AFTER-FILE side by side for audit.
-AFTER-FILE gets `claude-audit-mode'. ORIGINAL-FILE is read-only.
-Changed regions are highlighted. Scroll is synced."
-  (delete-other-windows)
-  ;; Open original on the left
-  (find-file original-file)
-  (read-only-mode 1)
-  (setq-local header-line-format
-              (propertize
-               "  ORIGINAL (read-only)"
-               'face '(:height 1.1 :weight bold :foreground "gray")))
-  (let ((orig-buf (current-buffer)))
-    ;; Split
-    (if (fboundp 'split-window-sensibly-by-orientation)
-        (split-window-sensibly-by-orientation)
-      (split-window-right))
-    (other-window 1)
-    (find-file after-file)
-    ;; claude-audit-mode auto-activates via find-file-hook
-    (setq-local claude-audit--original-buffer orig-buf)
+(defun claude-audit--setup-split (original-file after-buf open-mode &optional ws-name)
+  "Common split view setup. Sets vars, highlights, scroll sync."
+  (with-current-buffer after-buf
     (setq-local claude-audit--original-file (file-truename original-file))
     (setq-local claude-audit--view-mode 'diff)
-    ;; Enable scroll sync
+    (setq-local claude-audit--open-mode open-mode)
+    (when ws-name
+      (setq-local claude-audit--workspace-name ws-name))
     (claude-audit--enable-scroll-sync)
-    ;; Compute and highlight changes
-    (let ((changes (claude-audit--compute-changes-auto original-file (current-buffer))))
+    (let ((changes (claude-audit--compute-changes-auto original-file after-buf)))
       (setq-local claude-audit--change-positions changes)
       (when changes
         (goto-char (car changes))
         (recenter)
         (claude-audit--sync-scroll)))))
+
+(defun claude-audit-open-split (original-file after-file)
+  "Open ORIGINAL-FILE and AFTER-FILE side by side for audit.
+Respects `claude-audit-open-in' for frame vs workspace mode."
+  (let ((open-mode claude-audit-open-in)
+        (ws-name nil))
+    ;; For workspace mode: create a new workspace
+    (when (and (eq open-mode 'workspace) (fboundp '+workspace/new))
+      (setq ws-name (format "audit:%s" (file-name-nondirectory after-file)))
+      (+workspace/new ws-name)
+      (+workspace/switch-to ws-name))
+    (delete-other-windows)
+    ;; Open original
+    (find-file original-file)
+    (read-only-mode 1)
+    (setq-local header-line-format
+                (propertize
+                 "  ORIGINAL (read-only)"
+                 'face '(:height 1.1 :weight bold :foreground "gray")))
+    (let ((orig-buf (current-buffer)))
+      ;; Split
+      (if (fboundp 'split-window-sensibly-by-orientation)
+          (split-window-sensibly-by-orientation)
+        (split-window-right))
+      (other-window 1)
+      (find-file after-file)
+      ;; claude-audit-mode auto-activates via find-file-hook
+      (setq-local claude-audit--original-buffer orig-buf)
+      (claude-audit--setup-split original-file (current-buffer) open-mode ws-name))))
 
 (provide 'claude-audit)
 ;;; claude-audit.el ends here

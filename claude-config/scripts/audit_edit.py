@@ -114,22 +114,71 @@ def show_terminal():
 
 # ── Editor launch ──────────────────────────────────────────────────────────
 
+def get_emacs_audit_mode() -> str:
+    """Check claude-audit-open-in setting from Emacs. Returns 'frame' or 'workspace'."""
+    try:
+        result = subprocess.run(
+            ["emacsclient", "--eval", "(symbol-value 'claude-audit-open-in)"],
+            capture_output=True, text=True, timeout=5
+        )
+        val = result.stdout.strip()
+        if val == "workspace":
+            return "workspace"
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return "frame"
+
+
 def open_split_in_emacs(original_path: str, after_path: str):
     """Open original + after file in Emacs split view via emacsclient."""
     elisp = f'(claude-audit-open-split "{original_path}" "{after_path}")'
-    tty = open("/dev/tty", "r")
-    subprocess.run(
-        ["emacsclient", "-c", "--eval", elisp],
-        stdin=tty, check=True
-    )
-    tty.close()
+    mode = get_emacs_audit_mode()
+
+    if mode == "workspace":
+        # Workspace mode: non-blocking eval, then poll for decision
+        subprocess.run(
+            ["emacsclient", "--eval", elisp],
+            capture_output=True
+        )
+        # Poll for decision file
+        _poll_for_decision(after_path)
+    else:
+        # Frame mode: blocking -c flag
+        tty = open("/dev/tty", "r")
+        subprocess.run(
+            ["emacsclient", "-c", "--eval", elisp],
+            stdin=tty, check=True
+        )
+        tty.close()
 
 
 def open_in_emacs(tmp_path: str):
     """Open single file in Emacs with claude-audit-mode via emacsclient."""
-    tty = open("/dev/tty", "r")
-    subprocess.run(["emacsclient", "-c", tmp_path], stdin=tty, check=True)
-    tty.close()
+    mode = get_emacs_audit_mode()
+
+    if mode == "workspace":
+        elisp = f'(progn (claude-audit-open-split nil "{tmp_path}"))'
+        subprocess.run(
+            ["emacsclient", "--eval", f'(find-file "{tmp_path}")'],
+            capture_output=True
+        )
+        _poll_for_decision(tmp_path)
+    else:
+        tty = open("/dev/tty", "r")
+        subprocess.run(["emacsclient", "-c", tmp_path], stdin=tty, check=True)
+        tty.close()
+
+
+def _poll_for_decision(tmp_path: str, timeout: int = 600):
+    """Poll for the .decision file until it appears or timeout."""
+    import time
+    decision_file = tmp_path + ".decision"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if os.path.exists(decision_file):
+            return
+        time.sleep(0.5)
+    raise TimeoutError(f"Audit decision timeout after {timeout}s")
 
 
 def open_rmate_audit(tmp_path: str, original_path: str, tool_name: str):
