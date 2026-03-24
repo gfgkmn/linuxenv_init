@@ -30,24 +30,24 @@ from pathlib import Path
 IS_MACOS = sys.platform == "darwin"
 EDITOR = os.environ.get("EDITOR", "vim")
 
-# Session-scoped mode via env var (default: permissive)
-AUDIT_MODE = os.environ.get("CLAUDE_AUDIT_MODE", "permissive")
+# Mode file — project-scoped, read on every hook invocation, no restart needed
+# Mode file — project-scoped via cwd, read on every hook invocation
+AUDIT_MODE_FILE = Path.cwd() / ".claude" / ".audit-mode"
 
 # Sentinel line used to encode decision in file content (for rmate transport)
 DECISION_SENTINEL = "# __CLAUDE_AUDIT_DECISION__:"
 
-# State file for "allow all" in strict mode (session-scoped via PID)
-_ALLOW_ALL_FILE = Path(tempfile.gettempdir()) / f".claude-audit-allowall-{os.getppid()}"
-
-
 # ── Mode detection ────────────────────────────────────────────────────────
 
 def get_audit_mode() -> str:
-    """Get current audit mode, respecting session overrides."""
-    # Check if strict mode was switched to "allow all" this session
-    if _ALLOW_ALL_FILE.exists():
-        return "permissive"
-    return AUDIT_MODE
+    """Get current audit mode from file. Read on every invocation."""
+    try:
+        mode = AUDIT_MODE_FILE.read_text().strip()
+        if mode in ("permissive", "audit", "strict"):
+            return mode
+    except OSError:
+        pass
+    return "permissive"
 
 
 def is_emacs_editor() -> bool:
@@ -204,95 +204,6 @@ def open_in_editor(tmp_path: str):
     subprocess.run(shlex.split(EDITOR) + [tmp_path], stdin=tty, check=True)
     tty.close()
 
-
-# ── Strict mode: terminal prompt ──────────────────────────────────────────
-
-def format_diff_preview(tool_name: str, tool_input: dict) -> str:
-    """Format a compact diff preview for terminal display."""
-    file_path = tool_input.get("file_path", "?")
-    lines = [f"\033[1m{tool_name}: {file_path}\033[0m"]
-
-    if tool_name == "Edit":
-        old = tool_input.get("old_string", "")
-        new = tool_input.get("new_string", "")
-        for line in old.splitlines()[:10]:
-            lines.append(f"  \033[31m- {line}\033[0m")
-        if old.count("\n") > 10:
-            lines.append(f"  \033[2m  ... ({old.count(chr(10))+1} lines)\033[0m")
-        for line in new.splitlines()[:10]:
-            lines.append(f"  \033[32m+ {line}\033[0m")
-        if new.count("\n") > 10:
-            lines.append(f"  \033[2m  ... ({new.count(chr(10))+1} lines)\033[0m")
-    elif tool_name == "Write":
-        content = tool_input.get("content", "")
-        n_lines = content.count("\n") + 1
-        lines.append(f"  \033[32m+ ({n_lines} lines)\033[0m")
-        for line in content.splitlines()[:5]:
-            lines.append(f"  \033[32m+ {line}\033[0m")
-        if n_lines > 5:
-            lines.append(f"  \033[2m  ... ({n_lines} lines total)\033[0m")
-    elif tool_name == "MultiEdit":
-        edits = tool_input.get("edits", [])
-        lines.append(f"  \033[2m{len(edits)} edit(s)\033[0m")
-        for i, edit in enumerate(edits[:3], 1):
-            old = edit.get("old_string", "")
-            new = edit.get("new_string", "")
-            lines.append(f"  \033[2m── Edit {i} ──\033[0m")
-            for line in old.splitlines()[:3]:
-                lines.append(f"  \033[31m- {line}\033[0m")
-            for line in new.splitlines()[:3]:
-                lines.append(f"  \033[32m+ {line}\033[0m")
-        if len(edits) > 3:
-            lines.append(f"  \033[2m  ... and {len(edits) - 3} more\033[0m")
-
-    return "\n".join(lines)
-
-
-def strict_prompt(tool_name: str, tool_input: dict) -> str:
-    """Show diff preview and prompt for decision.
-
-    Returns: 'approve', 'reject', 'allow_all', 'emacs', or 'reject||reason'
-    """
-    preview = format_diff_preview(tool_name, tool_input)
-    tty = open("/dev/tty", "r+")
-
-    tty.write(f"\n{preview}\n\n")
-    tty.write("\033[1m[y]\033[0m Allow  "
-              "\033[1m[n]\033[0m Reject  "
-              "\033[1m[a]\033[0m Allow all  "
-              "\033[1m[e]\033[0m Emacs audit  "
-              "\033[1m> \033[0m")
-    tty.flush()
-
-    try:
-        choice = tty.readline().strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        tty.close()
-        return "reject"
-
-    if choice in ("y", "yes", ""):
-        tty.close()
-        return "approve"
-    elif choice in ("a", "all", "always"):
-        tty.close()
-        return "allow_all"
-    elif choice in ("e", "emacs"):
-        tty.close()
-        return "emacs"
-    elif choice in ("n", "no"):
-        tty.write("Reason (optional): ")
-        tty.flush()
-        try:
-            reason = tty.readline().strip()
-        except (EOFError, KeyboardInterrupt):
-            reason = ""
-        tty.close()
-        if reason:
-            return f"reject||{reason}"
-        return "reject"
-    else:
-        tty.close()
-        return "reject"
 
 
 # ── Decision handling ──────────────────────────────────────────────────────
@@ -513,7 +424,7 @@ def main():
         print(json.dumps({"decision": "allow"}))
         return
 
-    # Write temp file (used by both audit and strict->emacs escalation)
+    # Audit mode: write temp file and open in editor
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=ext, prefix="claude-audit-", delete=False
     ) as f:
@@ -522,32 +433,9 @@ def main():
 
     try:
         if mode == "audit":
-            # ── Audit mode: Emacs review ──
             run_audit_mode(tool_name, tool_input, file_path, content, is_diff, ext, tmp_path)
-
-        elif mode == "strict":
-            # ── Strict mode: terminal prompt ──
-            result = strict_prompt(tool_name, tool_input)
-            decision, reason = parse_decision(result)
-
-            if decision == "approve":
-                handle_approve()
-            elif decision == "reject":
-                handle_reject(reason)
-            elif decision == "allow_all":
-                # Mark session as permissive from now on
-                _ALLOW_ALL_FILE.touch()
-                handle_approve()
-            elif decision == "emacs":
-                # Escalate to Emacs audit for this edit
-                run_audit_mode(tool_name, tool_input, file_path, content, is_diff, ext, tmp_path)
-            else:
-                handle_reject(reason)
-
         else:
-            # Unknown mode, allow by default
             print(json.dumps({"decision": "allow"}))
-
     finally:
         try:
             os.unlink(tmp_path)

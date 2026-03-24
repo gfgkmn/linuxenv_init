@@ -56,6 +56,15 @@
             "command": "python ~/.claude/scripts/audit_edit.py"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/enforce-tmux.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
