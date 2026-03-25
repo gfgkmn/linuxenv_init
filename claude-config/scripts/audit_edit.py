@@ -60,6 +60,11 @@ def is_rmate_editor() -> bool:
     return "rmate" in EDITOR.lower()
 
 
+def elisp_quote(path: str) -> str:
+    """Escape a string for safe interpolation into an Elisp double-quoted string."""
+    return path.replace("\\", "\\\\").replace('"', '\\"')
+
+
 # ── Build "after" content for Edit ─────────────────────────────────────────
 
 def build_after_content(tool_input: dict) -> str:
@@ -142,7 +147,7 @@ def get_emacs_audit_mode() -> str:
 
 
 def open_split_in_emacs(original_path: str, after_path: str):
-    elisp = f'(claude-audit-open-split "{original_path}" "{after_path}")'
+    elisp = f'(claude-audit-open-split "{elisp_quote(original_path)}" "{elisp_quote(after_path)}")'
     mode = get_emacs_audit_mode()
 
     if mode == "workspace":
@@ -162,7 +167,7 @@ def open_in_emacs(tmp_path: str):
 
     if mode == "workspace":
         subprocess.run(
-            ["emacsclient", "--eval", f'(find-file "{tmp_path}")'],
+            ["emacsclient", "--eval", f'(find-file "{elisp_quote(tmp_path)}")'],
             capture_output=True
         )
         _poll_for_decision(tmp_path)
@@ -234,12 +239,14 @@ def read_decision_file(tmp_path: str) -> tuple[str, str]:
 
 def read_rmate_decision(tmp_path: str) -> tuple[str, str, str]:
     content = Path(tmp_path).read_text()
-    stripped = content.lstrip()
-    if stripped.startswith(DECISION_SENTINEL):
-        first_nl = stripped.index("\n")
-        decision_line = stripped[:first_nl].strip()
+    # The sentinel is always the very first line (prepended by Emacs).
+    # Only strip the sentinel line itself; preserve all remaining content
+    # including any leading whitespace that belongs to the original file.
+    if content.startswith(DECISION_SENTINEL):
+        first_nl = content.index("\n")
+        decision_line = content[:first_nl].strip()
         raw_decision = decision_line.split(":", 1)[1].strip()
-        remaining = stripped[first_nl + 1:]
+        remaining = content[first_nl + 1:]
         decision, reason = parse_decision(raw_decision)
         if decision in ("approve", "change", "reject"):
             return decision, reason, remaining
@@ -401,8 +408,8 @@ def main():
 
     mode = get_audit_mode()
 
-    # Permissive: allow everything
-    if mode == "permissive":
+    # Only "audit" mode needs the hook; everything else is handled by settings.json
+    if mode != "audit":
         print(json.dumps({"decision": "allow"}))
         return
 
@@ -419,13 +426,11 @@ def main():
         is_diff = True
     elif tool_name == "Write":
         content = tool_input.get("content", "")
-        # Show diff if the file already exists (overwrite vs new file)
         is_diff = bool(file_path) and Path(file_path).exists()
     else:
         print(json.dumps({"decision": "allow"}))
         return
 
-    # Audit mode: write temp file and open in editor
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=ext, prefix="claude-audit-", delete=False
     ) as f:
@@ -433,10 +438,7 @@ def main():
         tmp_path = os.path.realpath(f.name)
 
     try:
-        if mode == "audit":
-            run_audit_mode(tool_name, tool_input, file_path, content, is_diff, ext, tmp_path)
-        else:
-            print(json.dumps({"decision": "allow"}))
+        run_audit_mode(tool_name, tool_input, file_path, content, is_diff, ext, tmp_path)
     finally:
         try:
             os.unlink(tmp_path)

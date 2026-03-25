@@ -145,15 +145,34 @@ Uses ~90% of screen width/height, centered on the main display."
         (remove-overlays (point-min) (point-max) 'claude-audit t)
         (when (bound-and-true-p read-only-mode) (read-only-mode -1)))
       (kill-buffer orig-buf))
-    ;; 4. Kill rmate buffer (sends close, unblocks rmate --wait on remote)
+    ;; 4. Disable mode + kill rmate buffer (sends close, unblocks rmate --wait)
     (when (buffer-live-p rmate-buf)
       (with-current-buffer rmate-buf
+        (claude-audit-mode -1)
         (set-buffer-modified-p nil)
         (kill-buffer rmate-buf)))
     ;; 5. Clean up workspace if needed
-    (when (and (eq open-mode 'workspace) ws-name (fboundp '+workspace/delete))
-      (+workspace/delete ws-name))
+    (when (and (eq open-mode 'workspace) ws-name (fboundp '+workspace/kill))
+      (+workspace/kill ws-name))
     (message "Audit decision: %s" decision)))
+
+(defun claude-audit--kill-buffer-cleanup ()
+  "Clean up workspace when audit buffer is killed outside normal flow.
+Added to `kill-buffer-hook' (buffer-local) so orphan workspaces are removed
+regardless of how the buffer is closed."
+  (when claude-audit-mode
+    (let ((ws-name claude-audit--workspace-name)
+          (open-mode claude-audit--open-mode)
+          (orig-buf claude-audit--original-buffer))
+      ;; Kill the original (read-only) buffer if still alive
+      (when (and orig-buf (buffer-live-p orig-buf))
+        (with-current-buffer orig-buf
+          (remove-overlays (point-min) (point-max) 'claude-audit t)
+          (when (bound-and-true-p read-only-mode) (read-only-mode -1)))
+        (kill-buffer orig-buf))
+      ;; Delete the workspace
+      (when (and (eq open-mode 'workspace) ws-name (fboundp '+workspace/kill))
+        (+workspace/kill ws-name)))))
 
 (defun claude-audit--cleanup-and-close ()
   "Clean up buffers and close the frame or workspace (emacsclient transport)."
@@ -166,13 +185,14 @@ Uses ~90% of screen width/height, centered on the main display."
         (remove-overlays (point-min) (point-max) 'claude-audit t)
         (read-only-mode -1))
       (kill-buffer claude-audit--original-buffer))
-    ;; Clean up after buffer + close frame/workspace
+    ;; Disable mode before kill to prevent kill-buffer-hook double-cleanup
+    (claude-audit-mode -1)
     (set-buffer-modified-p nil)
     (kill-buffer)
     (if (eq mode 'workspace)
         ;; Delete the workspace, switch back to previous
-        (when (and ws-name (fboundp '+workspace/delete))
-          (+workspace/delete ws-name))
+        (when (and ws-name (fboundp '+workspace/kill))
+          (+workspace/kill ws-name))
       ;; Delete the frame
       (delete-frame (selected-frame)))))
 
@@ -527,6 +547,8 @@ Works for any buffer (rmate virtual buffers, TRAMP buffers, local files)."
       (evil-make-overriding-map claude-audit-mode-map 'normal)
       (evil-make-overriding-map claude-audit-mode-map 'insert)
       (evil-normalize-keymaps))
+    ;; Clean up workspace if buffer is killed without approve/reject
+    (add-hook 'kill-buffer-hook #'claude-audit--kill-buffer-cleanup nil t)
     ;; Auto-refresh diff highlights after save (local files only)
     (when buffer-file-name
       (add-hook 'after-save-hook #'claude-audit--refresh-highlights nil t))
