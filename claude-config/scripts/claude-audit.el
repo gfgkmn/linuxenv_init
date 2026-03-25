@@ -615,6 +615,29 @@ Called as :after advice on `rmate-server--open-buffer'."
 
 ;; ── Split view: rmate (TRAMP original) ──────────────────────────────────
 
+(defun claude-audit--defer-highlights (after-buf tramp-path retries)
+  "Poll for TRAMP buffer readiness, then compute highlights.
+Checks every 0.5s, up to RETRIES attempts."
+  (run-with-timer
+   0.5 nil
+   (lambda (abuf tpath n)
+     (if (not (buffer-live-p abuf))
+         nil  ; audit buffer killed, stop
+       (let ((ob (or (find-buffer-visiting tpath)
+                     (get-file-buffer tpath))))
+         (if (and ob (buffer-live-p ob) (> (buffer-size ob) 0))
+             (with-current-buffer abuf
+               (setq-local claude-audit--original-buffer ob)
+               (let ((changes (claude-audit--compute-changes-from-buffers ob abuf)))
+                 (setq-local claude-audit--change-positions changes)
+                 (when changes
+                   (goto-char (car changes))
+                   (recenter)
+                   (claude-audit--sync-scroll))))
+           (when (> n 1)
+             (claude-audit--defer-highlights abuf tpath (1- n)))))))
+   after-buf tramp-path retries))
+
 (defun claude-audit--rmate-open-split (ssh-alias remote-path)
   "Open split view with remote original file via TRAMP."
   (let* ((tramp-method (or (bound-and-true-p tramp-default-method) "sshx"))
@@ -635,23 +658,22 @@ Called as :after advice on `rmate-server--open-buffer'."
                    "  ORIGINAL (read-only, remote)"
                    'face '(:height 1.1 :weight bold :foreground "gray"))))
     ;; Update references in after buffer
-    (setq-local claude-audit--original-buffer (find-buffer-visiting tramp-path))
-    (setq-local claude-audit--original-file tramp-path)
-    (setq-local claude-audit--view-mode 'diff)
-    ;; Enable scroll sync
-    (claude-audit--enable-scroll-sync)
-    ;; Compute and highlight changes
-    ;; Wait for TRAMP buffer to be ready (find-file may be slow)
     (let ((orig-buf (or (find-buffer-visiting tramp-path)
                         (get-file-buffer tramp-path))))
-      (when orig-buf
-        (setq-local claude-audit--original-buffer orig-buf)
-        (let ((changes (claude-audit--compute-changes-from-buffers orig-buf after-buf)))
-          (setq-local claude-audit--change-positions changes)
-          (when changes
-            (goto-char (car changes))
-            (recenter)
-            (claude-audit--sync-scroll)))))))
+      (setq-local claude-audit--original-buffer orig-buf)
+      (setq-local claude-audit--original-file tramp-path)
+      (setq-local claude-audit--view-mode 'diff)
+      (claude-audit--enable-scroll-sync)
+      ;; Compute highlights — defer if TRAMP buffer isn't ready yet
+      (if (and orig-buf (buffer-live-p orig-buf) (> (buffer-size orig-buf) 0))
+          (let ((changes (claude-audit--compute-changes-from-buffers orig-buf after-buf)))
+            (setq-local claude-audit--change-positions changes)
+            (when changes
+              (goto-char (car changes))
+              (recenter)
+              (claude-audit--sync-scroll)))
+        ;; TRAMP still loading — poll every 0.5s until ready (max 30s)
+        (claude-audit--defer-highlights after-buf tramp-path 60)))))
 
 ;; ── Split view: emacsclient (local files) ───────────────────────────────
 
