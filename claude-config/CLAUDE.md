@@ -22,6 +22,11 @@ Check tmux state before sending new commands — the user may have acted.
 NEVER use `| tee` inside tmux — it blocks Ctrl+C.
 For long-running tasks, ALWAYS ensure the command produces visible progress (tqdm, --verbose, --log-interval, periodic prints).
 
+**Waiting for tmux commands to finish:**
+Use `bash ~/.claude/scripts/tmux-exec.sh <session> <command>` to send a command and wait for completion.
+It blocks until done and returns the pane output. NEVER use `sleep N && tmux capture-pane` — it is blocked by a hook.
+Example: `bash ~/.claude/scripts/tmux-exec.sh claude-running-myproject "python train.py --epochs 5"`
+
 ## Failure Protocol
 
 - Default to short waits (1-2s) when checking command output. Only increase for genuinely long-running tasks.
