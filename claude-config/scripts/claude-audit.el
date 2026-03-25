@@ -130,12 +130,13 @@ Uses ~90% of screen width/height, centered on the main display."
 (defun claude-audit--rmate-decide (decision)
   "Send DECISION back via rmate protocol and close."
   (let ((rmate-buf (current-buffer))
-        (orig-buf claude-audit--original-buffer))
+        (orig-buf claude-audit--original-buffer)
+        (ws-name claude-audit--workspace-name)
+        (open-mode claude-audit--open-mode))
     ;; 1. Prepend sentinel line to buffer content
     (goto-char (point-min))
     (insert (format "%s %s\n" claude-audit--decision-sentinel decision))
     ;; 2. Save via rmate FIRST (sends content including sentinel to remote)
-    ;;    Must happen while we're still in the rmate buffer
     (when (fboundp 'rmate-server--save-current)
       (rmate-server--save-current))
     ;; 3. Clean up original buffer (TRAMP)
@@ -149,6 +150,9 @@ Uses ~90% of screen width/height, centered on the main display."
       (with-current-buffer rmate-buf
         (set-buffer-modified-p nil)
         (kill-buffer rmate-buf)))
+    ;; 5. Clean up workspace if needed
+    (when (and (eq open-mode 'workspace) ws-name (fboundp '+workspace/delete))
+      (+workspace/delete ws-name))
     (message "Audit decision: %s" decision)))
 
 (defun claude-audit--cleanup-and-close ()
@@ -578,9 +582,8 @@ Called as :after advice on `rmate-server--open-buffer'."
                                (when (fboundp 'rmate-server--save-current)
                                  (rmate-server--save-current))
                                (claude-audit--refresh-highlights)))
-              ;; For Edit/MultiEdit, open split view with original via TRAMP
-              (when (and (member tool-name '("Edit" "MultiEdit"))
-                         original-path
+              ;; Open split view with original via TRAMP (Edit, MultiEdit, or Write on existing file)
+              (when (and original-path
                          (not (string-empty-p original-path)))
                 (claude-audit--rmate-open-split ssh-alias original-path)))))))))
 
@@ -616,12 +619,17 @@ Called as :after advice on `rmate-server--open-buffer'."
     ;; Enable scroll sync
     (claude-audit--enable-scroll-sync)
     ;; Compute and highlight changes
-    (let ((changes (claude-audit--compute-changes-auto tramp-path after-buf)))
-      (setq-local claude-audit--change-positions changes)
-      (when changes
-        (goto-char (car changes))
-        (recenter)
-        (claude-audit--sync-scroll)))))
+    ;; Wait for TRAMP buffer to be ready (find-file may be slow)
+    (let ((orig-buf (or (find-buffer-visiting tramp-path)
+                        (get-file-buffer tramp-path))))
+      (when orig-buf
+        (setq-local claude-audit--original-buffer orig-buf)
+        (let ((changes (claude-audit--compute-changes-from-buffers orig-buf after-buf)))
+          (setq-local claude-audit--change-positions changes)
+          (when changes
+            (goto-char (car changes))
+            (recenter)
+            (claude-audit--sync-scroll)))))))
 
 ;; ── Split view: emacsclient (local files) ───────────────────────────────
 

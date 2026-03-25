@@ -419,7 +419,8 @@ def main():
         is_diff = True
     elif tool_name == "Write":
         content = tool_input.get("content", "")
-        is_diff = False
+        # Show diff if the file already exists (overwrite vs new file)
+        is_diff = bool(file_path) and Path(file_path).exists()
     else:
         print(json.dumps({"decision": "allow"}))
         return
