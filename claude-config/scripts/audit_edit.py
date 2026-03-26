@@ -239,12 +239,13 @@ def read_decision_file(tmp_path: str) -> tuple[str, str]:
 
 def read_rmate_decision(tmp_path: str) -> tuple[str, str, str]:
     content = Path(tmp_path).read_text()
-    # The sentinel is always the very first line (prepended by Emacs).
-    # Only strip the sentinel line itself; preserve all remaining content
-    # including any leading whitespace that belongs to the original file.
-    if content.startswith(DECISION_SENTINEL):
-        first_nl = content.index("\n")
-        decision_line = content[:first_nl].strip()
+    # Find the sentinel, tolerating leading whitespace from rmate,
+    # but preserve all content after the sentinel line exactly.
+    stripped = content.lstrip()
+    if stripped.startswith(DECISION_SENTINEL):
+        sentinel_start = len(content) - len(stripped)
+        first_nl = content.index("\n", sentinel_start)
+        decision_line = content[sentinel_start:first_nl].strip()
         raw_decision = decision_line.split(":", 1)[1].strip()
         remaining = content[first_nl + 1:]
         decision, reason = parse_decision(raw_decision)
