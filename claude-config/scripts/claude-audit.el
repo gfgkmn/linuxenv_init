@@ -350,10 +350,11 @@ regardless of how the buffer is closed."
 (defun claude-audit--get-diff-hunks (file-a file-b)
   "Get list of changed line ranges using external diff on local files.
 Returns list of (orig-start orig-count new-start new-count)."
-  (let ((output (shell-command-to-string
-                 (format "diff -u0 %s %s 2>/dev/null || true"
-                         (shell-quote-argument file-a)
-                         (shell-quote-argument file-b))))
+  (let ((output (let ((default-directory temporary-file-directory))
+                  (shell-command-to-string
+                   (format "diff -u0 %s %s 2>/dev/null || true"
+                           (shell-quote-argument file-a)
+                           (shell-quote-argument file-b)))))
         (hunks nil))
     (with-temp-buffer
       (insert output)
@@ -595,8 +596,13 @@ Called as :after advice on `rmate-server--open-buffer'."
               (setq-local claude-audit--rmate-conn conn)
               (setq-local claude-audit--remote-host ssh-alias)
               (setq-local claude-audit--remote-original-path original-path)
-              ;; Activate audit mode
+              ;; Activate audit mode and bring Emacs to front
               (claude-audit-mode 1)
+              (when (eq system-type 'darwin)
+                (call-process "osascript" nil 0 nil
+                              "-e" "tell application \"Emacs\" to activate"))
+              (raise-frame)
+              (select-frame-set-input-focus (selected-frame))
               ;; Override C-x C-s to use rmate save + refresh highlights
               (local-set-key (kbd "C-x C-s")
                              (lambda ()
