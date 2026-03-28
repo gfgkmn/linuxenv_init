@@ -10,6 +10,7 @@ The tmux session (`claude-running-<project>`) is a shared whiteboard. The human 
 
 - NEVER use `| tee` inside tmux. Pipe to tee blocks Ctrl+C signal propagation. Instead, redirect output to a log file (`command > log.txt 2>&1`) or rely on the program's own logging.
 - When running long-running tasks, ALWAYS ensure the command produces visible progress: use `--progress`, `tqdm`, `--verbose`, `--log-interval`, or equivalent. If the script has no built-in progress output, add periodic print statements or wrap iterables with tqdm before running.
+- When a hook rejects a command and tells you to use tmux: execute that exact command in tmux. Do NOT work around the rejection by splitting or rewriting the command.
 
 ## Communication Rules
 

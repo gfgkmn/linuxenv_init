@@ -21,6 +21,8 @@ Always `cd /target/path` as a separate `tmux send-keys` before running commands 
 Check tmux state before sending new commands — the user may have acted.
 NEVER use `| tee` inside tmux — it blocks Ctrl+C.
 For long-running tasks, ALWAYS ensure the command produces visible progress (tqdm, --verbose, --log-interval, periodic prints).
+If a hook rejects a command with "use tmux": run the ORIGINAL command in tmux. Do NOT decompose, rewrite, or substitute with other commands to achieve the same goal outside tmux.
+When unsure whether a command will be long-running (large directories, bulk file ops, network transfers): default to tmux.
 
 **Waiting for tmux commands to finish:**
 Use `bash ~/.claude/scripts/tmux-exec.sh <session> <command>` to send a command and wait for completion.

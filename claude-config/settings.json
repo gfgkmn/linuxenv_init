@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python ~/.claude/scripts/audit_edit.py"
+            "command": "python ~/.claude/hooks/audit_edit.py"
           }
         ]
       },
