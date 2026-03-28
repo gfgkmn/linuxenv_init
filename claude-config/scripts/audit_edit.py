@@ -30,12 +30,36 @@ from pathlib import Path
 IS_MACOS = sys.platform == "darwin"
 EDITOR = os.environ.get("EDITOR", "vim")
 
-# Mode file — project-scoped, read on every hook invocation, no restart needed
 # Mode file — project-scoped via cwd, read on every hook invocation
 AUDIT_MODE_FILE = Path.cwd() / ".claude" / ".audit-mode"
 
 # Sentinel line used to encode decision in file content (for rmate transport)
 DECISION_SENTINEL = "# __CLAUDE_AUDIT_DECISION__:"
+
+
+# ── Hook response helpers ─────────────────────────────────────────────────
+
+def hook_allow(reason: str = "approved by audit hook"):
+    """Print the hookSpecificOutput JSON that Claude Code expects for allow."""
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "permissionDecisionReason": reason
+        }
+    }))
+
+
+def hook_deny(reason: str = "Rejected by user during audit review"):
+    """Print the hookSpecificOutput JSON that Claude Code expects for deny."""
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason
+        }
+    }))
+
 
 # ── Mode detection ────────────────────────────────────────────────────────
 
@@ -239,8 +263,6 @@ def read_decision_file(tmp_path: str) -> tuple[str, str]:
 
 def read_rmate_decision(tmp_path: str) -> tuple[str, str, str]:
     content = Path(tmp_path).read_text()
-    # Find the sentinel, tolerating leading whitespace from rmate,
-    # but preserve all content after the sentinel line exactly.
     stripped = content.lstrip()
     if stripped.startswith(DECISION_SENTINEL):
         sentinel_start = len(content) - len(stripped)
@@ -255,7 +277,7 @@ def read_rmate_decision(tmp_path: str) -> tuple[str, str, str]:
 
 
 def handle_approve():
-    print(json.dumps({"decision": "allow"}))
+    hook_allow("approved by audit hook")
 
 
 def handle_reject(reason: str = ""):
@@ -263,10 +285,7 @@ def handle_reject(reason: str = ""):
         msg = f"Rejected by user: {reason}"
     else:
         msg = "Rejected by user during audit review"
-    print(json.dumps({
-        "decision": "block",
-        "reason": msg
-    }))
+    hook_deny(msg)
     print(msg, file=sys.stderr)
     sys.exit(2)
 
@@ -276,18 +295,12 @@ def handle_edit_change(tool_input: dict, tmp_path: str, content_override: str = 
     file_path = tool_input.get("file_path", "?")
     try:
         Path(file_path).write_text(user_content)
-        print(json.dumps({
-            "decision": "block",
-            "reason": (
-                f"User revised the edit during audit and applied to {file_path}. "
-                f"The file now contains the user's version."
-            )
-        }))
+        hook_deny(
+            f"User revised the edit during audit and applied to {file_path}. "
+            f"The file now contains the user's version."
+        )
     except OSError as e:
-        print(json.dumps({
-            "decision": "block",
-            "reason": f"User revised content but write failed: {e}"
-        }))
+        hook_deny(f"User revised content but write failed: {e}")
     print(f"User revised content during audit for {file_path}", file=sys.stderr)
     sys.exit(2)
 
@@ -297,18 +310,12 @@ def handle_write_change(tool_input: dict, tmp_path: str, content_override: str =
     file_path = tool_input.get("file_path", "?")
     try:
         Path(file_path).write_text(user_content)
-        print(json.dumps({
-            "decision": "block",
-            "reason": (
-                f"User revised content during audit and applied to {file_path}. "
-                f"User's version:\n\n{user_content}"
-            )
-        }))
+        hook_deny(
+            f"User revised content during audit and applied to {file_path}. "
+            f"User's version:\n\n{user_content}"
+        )
     except OSError as e:
-        print(json.dumps({
-            "decision": "block",
-            "reason": f"User revised content but write failed: {e}"
-        }))
+        hook_deny(f"User revised content but write failed: {e}")
     print(f"User revised content during audit for {file_path}", file=sys.stderr)
     sys.exit(2)
 
@@ -336,7 +343,6 @@ def run_audit_mode(tool_name, tool_input, file_path, content, is_diff, ext, tmp_
 
     # For plain editors, prepend the APPROVE line
     if not use_emacs and not use_rmate:
-        # Rewrite temp file with APPROVE header
         Path(tmp_path).write_text("# APPROVE (delete this line to BLOCK)\n#\n" + content)
 
     try:
@@ -389,10 +395,7 @@ def run_audit_mode(tool_name, tool_input, file_path, content, is_diff, ext, tmp_
             OSError, KeyboardInterrupt) as e:
         if use_emacs:
             show_terminal()
-        print(json.dumps({
-            "decision": "block",
-            "reason": f"Editor error: {e}"
-        }))
+        hook_deny(f"Editor error: {e}")
         print(f"Editor error: {e}", file=sys.stderr)
         sys.exit(2)
 
@@ -404,14 +407,11 @@ def main():
     try:
         data = json.loads(raw)
     except (json.JSONDecodeError, ValueError):
-        print(json.dumps({"decision": "allow"}))
         return
 
     mode = get_audit_mode()
 
-    # Only "audit" mode needs the hook; everything else is handled by settings.json
     if mode != "audit":
-        print(json.dumps({"decision": "allow"}))
         return
 
     tool_name = data.get("tool_name", "")
@@ -429,7 +429,6 @@ def main():
         content = tool_input.get("content", "")
         is_diff = bool(file_path) and Path(file_path).exists()
     else:
-        print(json.dumps({"decision": "allow"}))
         return
 
     with tempfile.NamedTemporaryFile(
