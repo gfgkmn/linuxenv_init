@@ -147,10 +147,34 @@ def hide_terminal():
 
 def show_terminal():
     if IS_MACOS:
-        subprocess.run(
-            ["osascript", "-e", 'tell application "iTerm2" to activate'],
-            capture_output=True
-        )
+        session_id = os.environ.get("ITERM_SESSION_ID", "")
+        # Extract UUID part from "w0t0p0:UUID" format
+        if ":" in session_id:
+            session_uuid = session_id.split(":", 1)[1]
+        else:
+            session_uuid = ""
+        if session_uuid:
+            script = f'''
+tell application "iTerm2"
+    repeat with w in windows
+        repeat with t in tabs of w
+            repeat with s in sessions of t
+                if unique ID of s is "{session_uuid}" then
+                    select w
+                    activate
+                    return
+                end if
+            end repeat
+        end repeat
+    end repeat
+    activate
+end tell'''
+            subprocess.run(["osascript", "-e", script], capture_output=True)
+        else:
+            subprocess.run(
+                ["osascript", "-e", 'tell application "iTerm2" to activate'],
+                capture_output=True
+            )
 
 
 # ── Editor launch ──────────────────────────────────────────────────────────
