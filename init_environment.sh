@@ -103,7 +103,7 @@ else
 	echo "fd is already installed"
 fi
 
-if [[ ! -f ~/.ssh/id_rsa ]]; then
+if [[ ! -f ~/.ssh/id_rsa && ! -f ~/.ssh/id_ed25519.pub ]]; then
 	ssh-keygen -t rsa -N ''
 	cat >>~/.ssh/authorized_keys <<EOF
 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA0ZzwzAjt7F4xOD4E0TKreAVUQKC8htT2n0DsjVximdIeaiXB24RDmYR7Hv05Iu9Mbc4K/MRrEMbKSBTEr15MN5LKZFNWpmC2V0ur5iq+hsPGMZoQ8ixB+YAmBw00I3qkEG/ceEaVX7zXLffLo+oahJEyYRWOIAUIW1Cligfs90OljX/lvzbVC+UASK950eAKWaTFlTVW1VKz6uhGOzqlbZBI+lIN1G0bLU+14XCz3rvlv2dgZCEuLZWEpC55iQllfJirmohjBBOuw7StbvRH4bLTne12ahoXDGpM0Bflawa8werv/Qp0/ib4vHeUV7sZu4STKkADjQP7ByiZwgrhcw== gfgkmn@gmail.com
