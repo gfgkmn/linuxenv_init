@@ -128,9 +128,11 @@ fi
 if [[ ! -d ~/Applications/ycmd ]]; then
 	git clone git@github.com:gfgkmn/ycmd.git
 	mv ycmd ~/Applications
+	current_folder=$(pwd)
 	cd ~/Applications/ycmd || exit
 	git submodule update --init --recursive
 	python build.py --all
+	cd "$current_folder" || exit
 fi
 
 if [[ ! -f ~/Applications/bin/json_probe ]]; then
