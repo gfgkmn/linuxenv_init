@@ -1,14 +1,18 @@
 #!/usr/bin/env python
-"""Migrate Claude Code sessions after moving a project folder.
+"""Migrate, export, and import Claude Code sessions.
 
 When you move a project directory, Claude Code can no longer find the sessions
 because they're indexed by the absolute path. This script re-maps sessions
 from the old path to the new path.
 
+For cross-machine transfers, use --export to create a portable archive and
+--import to unpack it on the target machine with automatic path rewriting.
+
 Usage:
-    python session_migrate.py /old/path/to/project /new/path/to/project
-    python session_migrate.py /old/path /new/path --dry-run
-    python session_migrate.py --list   # show all project paths with sessions
+    python session_migrate.py /old/path /new/path             # migrate
+    python session_migrate.py --export .                      # export cwd project
+    python session_migrate.py --import archive.tar.gz         # import to cwd
+    python session_migrate.py --list                          # list all projects
 """
 
 import argparse
@@ -16,8 +20,12 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
+import tarfile
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -25,6 +33,11 @@ from pathlib import Path
 CLAUDE_DIR = Path.home() / ".claude"
 PROJECTS_DIR = CLAUDE_DIR / "projects"
 HISTORY_JSONL = CLAUDE_DIR / "history.jsonl"
+FILE_HISTORY_DIR = CLAUDE_DIR / "file-history"
+TODOS_DIR = CLAUDE_DIR / "todos"
+TASKS_DIR = CLAUDE_DIR / "tasks"
+EXPORT_FORMAT_VERSION = 1
+EXPORT_MAGIC = "claude-session-export"
 
 # ANSI colors
 C_RESET = "\033[0m"
@@ -89,6 +102,77 @@ def count_sessions(project_dir: Path) -> int:
         return len(list(project_dir.glob("*.jsonl")))
     except OSError:
         return 0
+
+
+def collect_session_ids(project_dir: Path) -> list[str]:
+    """Extract session UUIDs from JSONL filenames in a project directory.
+
+    Session files are named <UUID>.jsonl. Corresponding UUID directories
+    (containing subagents/, tool-results/) use the same UUID.
+    """
+    ids = []
+    try:
+        for jsonl in project_dir.glob("*.jsonl"):
+            stem = jsonl.stem
+            # Basic UUID-like check: 8-4-4-4-12 hex pattern
+            if re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", stem):
+                ids.append(stem)
+    except OSError:
+        pass
+    return sorted(ids)
+
+
+def collect_satellite_paths(session_ids: list[str]) -> dict[str, list[Path]]:
+    """Find all satellite data (file-history, todos, tasks) for given session IDs.
+
+    Returns dict with keys: 'file_history', 'todos', 'tasks'.
+    Each value is a list of Path objects that exist on disk.
+    """
+    result: dict[str, list[Path]] = {"file_history": [], "todos": [], "tasks": []}
+
+    for sid in session_ids:
+        # file-history/<UUID>/
+        fh_dir = FILE_HISTORY_DIR / sid
+        if fh_dir.is_dir():
+            result["file_history"].append(fh_dir)
+
+        # todos/<UUID>*.json  (pattern: <UUID>-agent-<UUID>.json)
+        if TODOS_DIR.exists():
+            for todo_file in TODOS_DIR.glob(f"{sid}*.json"):
+                result["todos"].append(todo_file)
+
+        # tasks/<UUID>/
+        task_dir = TASKS_DIR / sid
+        if task_dir.is_dir():
+            result["tasks"].append(task_dir)
+
+    return result
+
+
+def extract_history_entries(original_path: str) -> list[str]:
+    """Extract lines from history.jsonl matching the given project path.
+
+    Returns list of raw JSON strings (one per line).
+    """
+    if not HISTORY_JSONL.exists():
+        return []
+
+    matching = []
+    try:
+        for line in HISTORY_JSONL.read_text(errors="replace").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                entry = json.loads(stripped)
+                project = entry.get("project", "")
+                if project == original_path or project.startswith(original_path + "/"):
+                    matching.append(stripped)
+            except (json.JSONDecodeError, ValueError):
+                continue
+    except OSError:
+        pass
+    return matching
 
 
 # ── List mode ────────────────────────────────────────────────────────────────
@@ -427,6 +511,373 @@ def migrate(old_path: str, new_path: str, dry_run: bool = False):
     return True
 
 
+# ── Export / Import ─────────────────────────────────────────────────────────
+
+def export_project(project_path: str, output_file: str | None, dry_run: bool = False) -> bool:
+    """Export a project's complete session data to a portable archive."""
+    project_path = os.path.normpath(os.path.abspath(project_path))
+    encoded = path_to_dirname(project_path)
+    project_dir = PROJECTS_DIR / encoded
+
+    prefix = f"{C_YELLOW}[DRY RUN]{C_RESET} " if dry_run else ""
+
+    print(f"\n{C_BOLD}Claude Session Export{C_RESET}")
+    print("─" * 50)
+    print(f"  Project: {project_path}")
+
+    if not project_dir.exists():
+        # Try finding by cwd in session data (handles lossy encoding)
+        for candidate in PROJECTS_DIR.iterdir():
+            if candidate.is_dir() and extract_cwd_from_project(candidate) == project_path:
+                project_dir = candidate
+                encoded = candidate.name
+                break
+        else:
+            print(f"\n{C_RED}ERROR: No sessions found for this project.{C_RESET}")
+            print(f"  Looked for: {project_dir}")
+            print(f"\nUse --list to see all project paths with sessions.")
+            return False
+
+    # Discover session IDs and satellite data
+    session_ids = collect_session_ids(project_dir)
+    n_sessions = count_sessions(project_dir)
+    satellites = collect_satellite_paths(session_ids)
+    history_entries = extract_history_entries(project_path)
+    project_size = dir_total_size(project_dir)
+
+    # Compute satellite sizes
+    fh_size = sum(dir_total_size(p) for p in satellites["file_history"])
+    todo_size = sum(p.stat().st_size for p in satellites["todos"] if p.exists())
+    task_size = sum(dir_total_size(p) for p in satellites["tasks"])
+
+    total_size = project_size + fh_size + todo_size + task_size
+
+    print(f"  Sessions: {n_sessions} ({human_size(project_size)})")
+    if satellites["file_history"]:
+        print(f"  File history: {len(satellites['file_history'])} session(s) ({human_size(fh_size)})")
+    if satellites["todos"]:
+        print(f"  Todos: {len(satellites['todos'])} file(s) ({human_size(todo_size)})")
+    if satellites["tasks"]:
+        print(f"  Tasks: {len(satellites['tasks'])} session(s) ({human_size(task_size)})")
+    print(f"  History entries: {len(history_entries)}")
+
+    # Check for memory directory
+    memory_dir = project_dir / "memory"
+    has_memory = memory_dir.is_dir() and any(memory_dir.iterdir())
+    if has_memory:
+        print(f"  Memory: {C_GREEN}yes{C_RESET}")
+
+    print(f"  Total: ~{human_size(total_size)}")
+
+    if dry_run:
+        print(f"\n{C_YELLOW}[DRY RUN] No archive created.{C_RESET}")
+        return True
+
+    # Determine output filename
+    if not output_file:
+        basename = os.path.basename(project_path) or "project"
+        output_file = f"{basename}-claude-sessions.tar.gz"
+    output_path = os.path.abspath(output_file)
+
+    # Build archive in a temp directory
+    with tempfile.TemporaryDirectory() as tmpdir:
+        export_root = Path(tmpdir) / "claude-session-export"
+        export_root.mkdir()
+
+        # Write manifest
+        manifest = {
+            "version": EXPORT_FORMAT_VERSION,
+            "format": EXPORT_MAGIC,
+            "created": datetime.now(timezone.utc).isoformat(),
+            "original_path": project_path,
+            "encoded_dirname": encoded,
+            "hostname": socket.gethostname(),
+            "session_ids": session_ids,
+            "session_count": n_sessions,
+            "has_memory": has_memory,
+            "has_file_history": len(satellites["file_history"]) > 0,
+            "has_todos": len(satellites["todos"]) > 0,
+            "has_tasks": len(satellites["tasks"]) > 0,
+            "total_size_bytes": total_size,
+        }
+        (export_root / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False)
+        )
+
+        # Copy project directory contents
+        projects_dest = export_root / "projects"
+        shutil.copytree(project_dir, projects_dest)
+
+        # Copy satellite data
+        if satellites["file_history"]:
+            fh_dest = export_root / "file-history"
+            fh_dest.mkdir()
+            for fh_dir in satellites["file_history"]:
+                shutil.copytree(fh_dir, fh_dest / fh_dir.name)
+
+        if satellites["todos"]:
+            todos_dest = export_root / "todos"
+            todos_dest.mkdir()
+            for todo_file in satellites["todos"]:
+                shutil.copy2(todo_file, todos_dest / todo_file.name)
+
+        if satellites["tasks"]:
+            tasks_dest = export_root / "tasks"
+            tasks_dest.mkdir()
+            for task_dir in satellites["tasks"]:
+                shutil.copytree(task_dir, tasks_dest / task_dir.name)
+
+        # Write history entries
+        if history_entries:
+            (export_root / "history-entries.jsonl").write_text(
+                "\n".join(history_entries) + "\n"
+            )
+
+        # Create tar.gz
+        with tarfile.open(output_path, "w:gz") as tar:
+            tar.add(str(export_root), arcname="claude-session-export")
+
+    archive_size = os.path.getsize(output_path)
+    print(f"\n{C_GREEN}Export complete!{C_RESET}")
+    print(f"  Archive: {output_path}")
+    print(f"  Size: {human_size(archive_size)} (compressed)")
+    print(f"\nTo import on another machine:")
+    print(f"  python session_migrate.py --import {os.path.basename(output_path)} --target /path/to/project")
+
+    return True
+
+
+def import_project(
+    archive_path: str, target_path: str, dry_run: bool = False, conflict: str = "skip"
+) -> bool:
+    """Import sessions from an archive into a target project path."""
+    archive_path = os.path.abspath(archive_path)
+    target_path = os.path.normpath(os.path.abspath(target_path))
+
+    prefix = f"{C_YELLOW}[DRY RUN]{C_RESET} " if dry_run else ""
+
+    if not os.path.isfile(archive_path):
+        print(f"{C_RED}ERROR: Archive not found: {archive_path}{C_RESET}")
+        return False
+
+    print(f"\n{C_BOLD}Claude Session Import{C_RESET}")
+    print("─" * 50)
+
+    # Extract to temp directory and read manifest
+    with tempfile.TemporaryDirectory() as tmpdir:
+        try:
+            with tarfile.open(archive_path, "r:gz") as tar:
+                tar.extractall(tmpdir)
+        except (tarfile.TarError, OSError) as e:
+            print(f"{C_RED}ERROR: Failed to extract archive: {e}{C_RESET}")
+            return False
+
+        export_root = Path(tmpdir) / "claude-session-export"
+        manifest_path = export_root / "manifest.json"
+
+        if not manifest_path.exists():
+            print(f"{C_RED}ERROR: Invalid archive — no manifest.json found.{C_RESET}")
+            return False
+
+        try:
+            manifest = json.loads(manifest_path.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"{C_RED}ERROR: Failed to read manifest: {e}{C_RESET}")
+            return False
+
+        if manifest.get("format") != EXPORT_MAGIC:
+            print(f"{C_RED}ERROR: Not a Claude session export archive.{C_RESET}")
+            return False
+
+        original_path = manifest["original_path"]
+        session_ids = manifest.get("session_ids", [])
+        old_encoded = manifest.get("encoded_dirname", path_to_dirname(original_path))
+        new_encoded = path_to_dirname(target_path)
+        new_project_dir = PROJECTS_DIR / new_encoded
+
+        print(f"  From: {original_path} ({manifest.get('hostname', '?')})")
+        print(f"  To:   {target_path}")
+        print(f"  Sessions: {manifest.get('session_count', '?')}")
+        if manifest.get("has_memory"):
+            print(f"  Memory: {C_GREEN}included{C_RESET}")
+        if manifest.get("has_file_history"):
+            print(f"  File history: included")
+        if manifest.get("has_todos"):
+            print(f"  Todos: included")
+        if manifest.get("has_tasks"):
+            print(f"  Tasks: included")
+        print()
+
+        # Conflict detection
+        if new_project_dir.exists():
+            n_existing = count_sessions(new_project_dir)
+            if n_existing > 0:
+                if conflict == "abort":
+                    print(f"{C_RED}ERROR: Target already has {n_existing} session(s). "
+                          f"Use --conflict skip or --conflict overwrite.{C_RESET}")
+                    return False
+                elif conflict == "skip":
+                    print(f"{C_YELLOW}Target has {n_existing} existing session(s) — "
+                          f"existing files will be skipped.{C_RESET}")
+                elif conflict == "overwrite":
+                    print(f"{C_YELLOW}Target has {n_existing} existing session(s) — "
+                          f"existing files will be overwritten.{C_RESET}")
+
+        if dry_run:
+            print(f"\n{C_YELLOW}[DRY RUN] No changes made.{C_RESET}")
+            return True
+
+        if not dry_run:
+            try:
+                answer = input(f"Proceed with import? [y/N] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\nCancelled.")
+                return False
+            if answer not in ("y", "yes"):
+                print("Cancelled.")
+                return False
+
+        # Step 1: Copy project files
+        new_project_dir.mkdir(parents=True, exist_ok=True)
+        src_projects = export_root / "projects"
+        files_copied = 0
+
+        if src_projects.is_dir():
+            for item in sorted(src_projects.rglob("*")):
+                rel = item.relative_to(src_projects)
+                dest = new_project_dir / rel
+                if item.is_dir():
+                    dest.mkdir(parents=True, exist_ok=True)
+                elif item.is_file():
+                    if dest.exists() and conflict == "skip":
+                        print(f"  {C_DIM}SKIP (exists): {rel}{C_RESET}")
+                        continue
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item, dest)
+                    files_copied += 1
+
+        # Step 2: Rewrite paths in session JSONL files
+        jsonl_updated = 0
+        print(f"\n{prefix}Rewriting paths in session files...")
+        for jsonl in sorted(new_project_dir.glob("*.jsonl")):
+            n = update_jsonl_cwd(jsonl, original_path, target_path, dry_run=False)
+            if n > 0:
+                print(f"  {jsonl.name}: {n} entries updated")
+                jsonl_updated += n
+
+        # Step 3: Rewrite sessions-index.json
+        index_path = new_project_dir / "sessions-index.json"
+        n_idx = update_sessions_index(index_path, original_path, target_path, dry_run=False)
+        if n_idx > 0:
+            print(f"  sessions-index.json: {n_idx} entries updated")
+
+        # Also rewrite fullPath and originalPath in sessions-index.json
+        if index_path.exists():
+            try:
+                data = json.loads(index_path.read_text(errors="replace"))
+                changed = False
+                for entry in data.get("entries", []):
+                    fp = entry.get("fullPath", "")
+                    if fp:
+                        # Rebuild fullPath using local PROJECTS_DIR
+                        basename = os.path.basename(fp)
+                        entry["fullPath"] = str(new_project_dir / basename)
+                        changed = True
+                if "originalPath" in data:
+                    data["originalPath"] = target_path
+                    changed = True
+                if changed:
+                    index_path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+                    print(f"  sessions-index.json: fullPath/originalPath rebuilt")
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"  {C_YELLOW}WARNING: Could not update fullPath: {e}{C_RESET}")
+
+        # Step 4: Copy satellite data (UUIDs are stable, no path rewriting needed)
+        src_fh = export_root / "file-history"
+        if src_fh.is_dir():
+            fh_count = 0
+            for fh_dir in src_fh.iterdir():
+                if fh_dir.is_dir():
+                    dest = FILE_HISTORY_DIR / fh_dir.name
+                    if dest.exists() and conflict == "skip":
+                        continue
+                    FILE_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+                    if dest.exists():
+                        shutil.rmtree(dest)
+                    shutil.copytree(fh_dir, dest)
+                    fh_count += 1
+            if fh_count:
+                print(f"  File history: {fh_count} session(s) copied")
+
+        src_todos = export_root / "todos"
+        if src_todos.is_dir():
+            todo_count = 0
+            TODOS_DIR.mkdir(parents=True, exist_ok=True)
+            for todo_file in src_todos.iterdir():
+                if todo_file.is_file():
+                    dest = TODOS_DIR / todo_file.name
+                    if dest.exists() and conflict == "skip":
+                        continue
+                    shutil.copy2(todo_file, dest)
+                    todo_count += 1
+            if todo_count:
+                print(f"  Todos: {todo_count} file(s) copied")
+
+        src_tasks = export_root / "tasks"
+        if src_tasks.is_dir():
+            task_count = 0
+            for task_dir in src_tasks.iterdir():
+                if task_dir.is_dir():
+                    dest = TASKS_DIR / task_dir.name
+                    if dest.exists() and conflict == "skip":
+                        continue
+                    TASKS_DIR.mkdir(parents=True, exist_ok=True)
+                    if dest.exists():
+                        shutil.rmtree(dest)
+                    shutil.copytree(task_dir, dest)
+                    task_count += 1
+            if task_count:
+                print(f"  Tasks: {task_count} session(s) copied")
+
+        # Step 5: Merge history entries with path rewriting
+        src_history = export_root / "history-entries.jsonl"
+        if src_history.exists():
+            new_entries = []
+            for line in src_history.read_text(errors="replace").splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                    if "project" in entry and isinstance(entry["project"], str):
+                        entry["project"] = entry["project"].replace(original_path, target_path, 1)
+                    if "cwd" in entry and isinstance(entry["cwd"], str):
+                        entry["cwd"] = entry["cwd"].replace(original_path, target_path, 1)
+                    new_entries.append(json.dumps(entry, ensure_ascii=False))
+                except (json.JSONDecodeError, ValueError):
+                    new_entries.append(stripped)
+
+            if new_entries:
+                # Backup history first
+                if HISTORY_JSONL.exists():
+                    backup = HISTORY_JSONL.with_suffix(".jsonl.bak")
+                    try:
+                        shutil.copy2(HISTORY_JSONL, backup)
+                    except OSError:
+                        pass
+                with open(HISTORY_JSONL, "a") as f:
+                    f.write("\n".join(new_entries) + "\n")
+                print(f"  History: {len(new_entries)} entries merged")
+
+    # Summary
+    print(f"\n{C_GREEN}Import complete!{C_RESET}")
+    print(f"  Files copied:   {files_copied}")
+    print(f"  Paths rewritten: {jsonl_updated}")
+    print(f"\nYou can now resume sessions with: cd {target_path} && claude /resume")
+
+    return True
+
+
 # ── Interactive source selector ──────────────────────────────────────────────
 
 def collect_missing_projects() -> list[tuple[str, int, int, str]]:
@@ -479,16 +930,22 @@ def collect_all_projects() -> list[tuple[str, int, int, str, bool]]:
     return projects
 
 
-def select_source_fzf(target_path: str, show_all: bool = False) -> str | None:
-    """Use fzf to select a source project to migrate from.
+def select_source_fzf(
+    target_path: str | None = None,
+    show_all: bool = False,
+    header_prefix: str = "Select source project to migrate INTO",
+) -> str | None:
+    """Use fzf to select a source project.
 
     By default only shows MISSING projects. Use show_all=True to show all.
+    header_prefix customizes the picker header (e.g. for export vs migrate).
     """
     if show_all:
         projects = collect_all_projects()
         # Exclude the target itself
-        projects = [(p, n, s, d, e) for p, n, s, d, e in projects
-                    if os.path.normpath(p) != os.path.normpath(target_path)]
+        if target_path:
+            projects = [(p, n, s, d, e) for p, n, s, d, e in projects
+                        if os.path.normpath(p) != os.path.normpath(target_path)]
     else:
         projects = collect_missing_projects()
 
@@ -515,8 +972,9 @@ def select_source_fzf(target_path: str, show_all: bool = False) -> str | None:
 
     fzf_input = "\n".join(fzf_lines)
 
+    header_target = f": {target_path}" if target_path else ""
     header = (
-        f"Select source project to migrate INTO: {target_path}\n"
+        f"{header_prefix}{header_target}\n"
         f"{'Path':<60}  {'Sessions':>12}  {'Size':>8}  Status"
     )
 
@@ -597,15 +1055,29 @@ def select_source_fallback(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Migrate Claude Code sessions after moving a project folder.",
+        description="Migrate, export, and import Claude Code sessions.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Migrate (same machine, moved folder)
   %(prog)s --list                          # Show all projects and find missing paths
   %(prog)s /old/path /new/path --dry-run   # Preview what would change
   %(prog)s /old/path /new/path             # Perform the migration
   %(prog)s --here                          # Interactive: pick source, migrate to cwd
   %(prog)s --here --all                    # Show all projects (not just missing)
+
+  # Export (pack sessions for transfer to another machine)
+  %(prog)s --export .                      # Export current directory's sessions
+  %(prog)s --export /path/to/project       # Export specific project
+  %(prog)s --export                        # Interactive: pick project via fzf
+  %(prog)s --export . -o backup.tar.gz     # Custom output filename
+  %(prog)s --export . --dry-run            # Preview what would be exported
+
+  # Import (unpack sessions on a new machine)
+  %(prog)s --import archive.tar.gz                     # Import to cwd
+  %(prog)s --import archive.tar.gz --target /new/path  # Import to specific path
+  %(prog)s --import archive.tar.gz --dry-run           # Preview import
+  %(prog)s --import archive.tar.gz --conflict overwrite
         """,
     )
     parser.add_argument(
@@ -626,11 +1098,32 @@ Examples:
     )
     parser.add_argument(
         "--all", action="store_true",
-        help="With --here: show all projects, not just missing ones",
+        help="With --here/--export: show all projects, not just missing ones",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
         help="Show what would be done without making changes",
+    )
+    parser.add_argument(
+        "--export", metavar="PATH", nargs="?", const="__PICKER__", default=None,
+        help="Export project sessions to a portable archive. "
+             "Pass a project path, '.' for cwd, or omit for fzf picker.",
+    )
+    parser.add_argument(
+        "--import", dest="import_archive", metavar="ARCHIVE", default=None,
+        help="Import sessions from a .tar.gz archive",
+    )
+    parser.add_argument(
+        "--target", metavar="PATH", default=None,
+        help="Target project path for --import (defaults to cwd)",
+    )
+    parser.add_argument(
+        "-o", "--output", metavar="FILE", default=None,
+        help="Output filename for --export (defaults to <project>-claude-sessions.tar.gz)",
+    )
+    parser.add_argument(
+        "--conflict", choices=["skip", "overwrite", "abort"], default="skip",
+        help="Conflict resolution for --import when sessions already exist (default: skip)",
     )
 
     args = parser.parse_args()
@@ -639,6 +1132,33 @@ Examples:
         list_projects()
         return
 
+    # ── Export mode ──
+    if args.export is not None:
+        if args.export == "__PICKER__":
+            source = select_source_fzf(
+                target_path=None, show_all=True,
+                header_prefix="Select project to export",
+            )
+            if not source:
+                print("No project selected. Cancelled.")
+                return
+            project_path = source
+        else:
+            project_path = os.path.normpath(os.path.abspath(args.export))
+        export_project(project_path, args.output, dry_run=args.dry_run)
+        return
+
+    # ── Import mode ──
+    if args.import_archive:
+        target = args.target or os.getcwd()
+        target = os.path.normpath(os.path.abspath(target))
+        import_project(
+            args.import_archive, target,
+            dry_run=args.dry_run, conflict=args.conflict,
+        )
+        return
+
+    # ── Interactive migrate mode ──
     if args.here:
         target = os.path.normpath(os.path.abspath(os.getcwd()))
         print(f"{C_BOLD}Target (current directory):{C_RESET} {target}\n")
@@ -649,6 +1169,7 @@ Examples:
         migrate(source, target, dry_run=args.dry_run)
         return
 
+    # ── Explicit path migrate mode ──
     if not args.old_path or not args.new_path:
         parser.print_help()
         print(f"\n{C_YELLOW}Tip: Use --here for interactive mode, or --list to browse.{C_RESET}")
