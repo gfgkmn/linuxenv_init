@@ -1,8 +1,33 @@
 ---
-description: Generate a handoff document for the next AI agent before compacting or ending a session. Auto-detects ML/training projects and captures runtime state.
+description: Generate or load a handoff document for AI agent context transfer. Use "/handoff" to generate before compact, "/handoff load" to resume from a previous handoff.
+argument-hint: [load]
 ---
 
 # Handoff Document Generator
+
+Two modes based on `$ARGUMENTS`:
+
+## Mode: Load (`/handoff load`)
+
+If `$ARGUMENTS` contains "load":
+
+1. Find the most recent handoff file:
+```bash
+ls -t ./claude-handoff/*-handoff*.md 2>/dev/null | head -1
+```
+
+2. If no file found, tell the user: "No handoff files found in ./claude-handoff/. Nothing to load."
+
+3. If found, read the file and then:
+   - Summarize the handoff to the user in 3-5 lines (task, progress, next step)
+   - State: "I've loaded the handoff context. Ready to continue — what should I focus on?"
+   - Treat the handoff content as authoritative context for this session. Follow the "First Step for Next Agent" unless the user directs otherwise.
+
+**Stop here for load mode. Do not execute the generation steps below.**
+
+---
+
+## Mode: Generate (default, no arguments or additional context in `$ARGUMENTS`)
 
 Generate a structured handoff summary so the next AI agent can continue work without access to this conversation's full context.
 
