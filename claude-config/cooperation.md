@@ -8,7 +8,19 @@ The tmux session (`claude-running-<project>`) is a shared whiteboard. The human 
 
 ## Tmux Rules
 
-- NEVER use `| tee` inside tmux. Pipe to tee blocks Ctrl+C signal propagation. Instead, redirect output to a log file (`command > log.txt 2>&1`) or rely on the program's own logging.
+- NEVER use `| tee` inside tmux — it blocks Ctrl+C signal propagation.
+- NEVER use `> log.txt 2>&1` redirection — it hides output from the user watching tmux.
+- **When logging is needed** (long-running tasks, experiments, or user asks), use `tmux pipe-pane` instead of output redirection. It captures to a file while keeping output visible in tmux:
+  ```bash
+  # Enable logging (only when needed)
+  tmux pipe-pane -t <session> -o 'cat >> /tmp/tmux-<session>.log'
+  # Run the command
+  bash ~/.claude/scripts/tmux-exec.sh <session> "python train.py --epochs 5"
+  # Stop logging when done
+  tmux pipe-pane -t <session>
+  ```
+  The agent can then Read or Grep `/tmp/tmux-<session>.log` to search output history.
+  If logging is not necessary, just run the command directly via `tmux-exec.sh` without `pipe-pane`.
 - When running long-running tasks, ALWAYS ensure the command produces visible progress: use `--progress`, `tqdm`, `--verbose`, `--log-interval`, or equivalent. If the script has no built-in progress output, add periodic print statements or wrap iterables with tqdm before running.
 - When a hook rejects a command and tells you to use tmux: execute that exact command in tmux. Do NOT work around the rejection by splitting or rewriting the command.
 

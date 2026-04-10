@@ -20,6 +20,7 @@ Session name: `claude-running-<project>` where `<project>` is the basename of th
 Always `cd /target/path` as a separate `tmux send-keys` before running commands that need a specific directory.
 Check tmux state before sending new commands — the user may have acted.
 NEVER use `| tee` inside tmux — it blocks Ctrl+C.
+NEVER use `> log.txt 2>&1` — it hides output from the user. When logging is needed, use `tmux pipe-pane` instead (see cooperation.md). When logging is not needed, just run the command directly.
 For long-running tasks, ALWAYS ensure the command produces visible progress (tqdm, --verbose, --log-interval, periodic prints).
 If a hook rejects a command with "use tmux": run the ORIGINAL command in tmux. Do NOT decompose, rewrite, or substitute with other commands to achieve the same goal outside tmux.
 When unsure whether a command will be long-running (large directories, bulk file ops, network transfers): default to tmux.
