@@ -30,6 +30,10 @@ Use `bash ~/.claude/scripts/tmux-exec.sh <session> <command>` to send a command 
 It blocks until done and returns the pane output. NEVER use `sleep N && tmux capture-pane` — it is blocked by a hook.
 Example: `bash ~/.claude/scripts/tmux-exec.sh claude-running-myproject "python train.py --epochs 5"`
 
+## Debugging Discipline
+
+When debugging, modify the failing script in place — don't create a new test script. Comment out, tweak, or add minimal instrumentation to the existing code so you can isolate the smallest change that triggers the error. This keeps the debugging context grounded in the real code path.
+
 ## Failure Protocol
 
 - Default to short waits (1-2s) when checking command output. Only increase for genuinely long-running tasks.
