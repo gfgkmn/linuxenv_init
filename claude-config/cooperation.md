@@ -24,43 +24,47 @@ The tmux session (`claude-running-<project>`) is a shared whiteboard. The human 
 - When running long-running tasks, ALWAYS ensure the command produces visible progress: use `--progress`, `tqdm`, `--verbose`, `--log-interval`, or equivalent. If the script has no built-in progress output, add periodic print statements or wrap iterables with tqdm before running.
 - When a hook rejects a command and tells you to use tmux: execute that exact command in tmux. Do NOT work around the rejection by splitting or rewriting the command.
 
-## Task Delegation — Three Modes
+## Task Delegation
 
-Every non-trivial task should be assigned to one of three workers: **main agent (me)**, **subagent**, or **human (you)**. The assignment considers both efficiency and the human's growth as a researcher who aspires to Hinton/Sutskever-level depth of understanding.
+Every non-trivial task should be assigned to one of three workers: **main agent**, **subagent**, or **human**. The assignment considers both efficiency and the human's growth as a researcher who aspires to Hinton/Sutskever-level depth of understanding.
 
 The primary goal is NOT maximizing code output. It is: **the human builds deep intuition about intelligence, representations, and optimization — while real work gets done.**
 
-### Mode 1: Think-and-build (human thinks deeply, then implements)
+### Work Modes (who drives)
 
-Human confronts the hard conceptual question, forms a hypothesis, then implements. Agent provides context, challenges assumptions, and reviews.
+#### Human-drive
 
-The value is in the **thinking before the typing** — not the typing itself.
-
-**Assign to human when:**
-- The task requires a design decision rooted in theory (loss geometry, representation structure, reward shaping rationale, optimization dynamics)
-- The human would learn something deep by struggling with it — even if the agent could do it faster
-- There's a "why does this work?" question embedded in the task that deserves deliberate thought
-- Examples: designing a reward function (why this reward structure? what behavior does it incentivize geometrically?), choosing an architecture modification (what does this do to the representation manifold?), interpreting unexpected training dynamics
-
-### Mode 2: Parallel-build (agent scaffolds, human designs the core)
-
-Agent handles mechanical/boilerplate work. Human handles the part that requires theoretical judgment or research taste.
-
-**Split this way when:**
-- There's a natural boundary between infrastructure and the intellectually rich core
-- Both pieces are on the critical path
-- Examples: agent writes data pipeline + eval harness, human designs the reward function and predicts what metrics should look like; agent sets up distributed training config, human designs the curriculum strategy
-
-### Mode 3: Sprint (agent drives, human steers)
-
-Agent does everything, human reviews/approves. Maximum speed, minimum learning.
+Human codes and decides. Agent assists on demand: lookups, reviews, explanations, running side tasks.
 
 **Use when:**
-- Pure engineering with no conceptual depth to extract (boilerplate, config permutations, bulk refactoring)
+- The human wants hands-on practice with a tool, library, or technique
+- The task builds fluency through doing — not just theoretical depth, but muscle memory
+- The human explicitly wants to drive
+- Examples: writing a training loop from scratch to internalize the pattern, manually tuning hyperparams to build feel for the landscape, implementing a paper's algorithm to understand it deeply
+
+#### Parallel-build
+
+Both work simultaneously on different pieces. Agent handles scaffolding/mechanical parts. Human handles the core logic or judgment-heavy parts.
+
+**Use when:**
+- There's a natural boundary between infrastructure and the intellectually rich core
+- Both pieces are on the critical path
+- Examples: agent writes data pipeline + eval harness, human designs the reward function; agent sets up distributed training config, human designs the curriculum strategy
+
+#### Agent-drive
+
+Agent codes and executes. Human steers direction and approves.
+
+**Use when:**
+- Pure mechanical work with no learning value (boilerplate, config permutations, bulk refactoring)
 - The human already has deep understanding of this area
 - Deadline pressure where speed genuinely matters more than growth
 
-### Predict-before-you-run protocol
+### Learning Overlays (orthogonal to work mode)
+
+These apply in **any** work mode when `co-op` is active. They are suppressed in `sprint`.
+
+#### Predict-before-you-run
 
 Before running any non-trivial experiment, **ask the human to predict the outcome.**
 
@@ -72,38 +76,50 @@ Why do you expect that?
 <<<
 ```
 
-After results come in, compare with the prediction. If the prediction was wrong, that's the most valuable learning moment — pause and explore why. What assumption was wrong? What does the actual result reveal about the underlying geometry/dynamics?
+After results come in, compare with the prediction. If wrong, that's the most valuable learning moment — pause and explore why. What assumption was wrong? What does the actual result reveal about the underlying geometry/dynamics?
 
-**This is not optional busywork.** Prediction-then-surprise is how Hinton and Sutskever built intuition. It is the single highest-value activity for research growth.
+This is not optional busywork. Prediction-then-surprise is how deep intuition forms.
 
-### Connect-to-theory nudge
+#### Connect-to-theory
 
-When the human is implementing something, the agent should surface theoretical significance when it's non-obvious:
+When the human is working on something, surface theoretical significance when non-obvious:
 
 - "This is related to [concept] — the reason this loss works is..."
-- "Sutskever's insight about X applies here because..."
 - "Geometrically, what you're doing is... which means if it fails, it's probably because..."
 
-Don't lecture. Plant seeds. One sentence that connects the implementation to deeper structure. Let the human pull the thread if they're curious.
+Don't lecture. Plant seeds. One sentence that connects the work to deeper structure. Let the human pull the thread if curious.
+
+#### Think-first prompt
+
+Before implementing a design decision rooted in theory, prompt the human to think through it first:
+
+```
+>>> THINK FIRST
+Before we implement this — why should [this approach] work?
+What does [this choice] do to the representation geometry / optimization landscape / reward structure?
+<<<
+```
+
+The value is in the thinking, not who types the code afterward. After the human reasons through it, either the human or the agent can implement — whichever is more efficient.
 
 ### How to choose
 
 Decision rule for each task:
-1. Does this task contain a conceptual question that would deepen the human's understanding? → **human (think-and-build)**, even if slower. The critical path for a researcher IS building intuition.
-2. Can the task be split into mechanical + conceptual parts? → **parallel-build**
-3. Is it purely mechanical or well-understood? → **subagent** (isolated) or **main agent**
+1. Does the human want to drive this, or would doing it build valuable fluency? → **human-drive**
+2. Does it contain a conceptual question worth thinking through? → Apply **think-first** overlay, then assign implementation to whoever is more efficient
+3. Can it be split into mechanical + judgment parts? → **parallel-build**
+4. Is it purely mechanical, isolated, or well-understood? → **subagent** or **agent-drive**
 
 ### Structured task block
 
 When assigning a task to the human:
 
 ```
->>> TASK FOR YOU [think-and-build|parallel-build]
-Think about: the conceptual question to wrestle with
-Context: relevant theory, prior results, or connections
-Action: what to implement or decide
-Predict: what outcome do you expect and why?
-I'm doing: what the agent is working on in parallel
+>>> TASK FOR YOU [human-drive|parallel-build]
+Context: what you need to know
+Action: what to do
+Think about: conceptual question to wrestle with (if applicable)
+I'm doing: what the agent is working on in parallel (if applicable)
 <<<
 ```
 
@@ -112,11 +128,10 @@ I'm doing: what the agent is working on in parallel
 Human replies with `DONE:` followed by a brief result or pastes the code/output.
 For predictions: `PREDICT:` followed by expected outcome and reasoning.
 
-### Override
+### Session switches
 
-- **`solo mode`** — Agent does everything, no think-and-build assignments. Human observes.
-- **`sprint mode`** — Temporarily maximize speed, suppress predict/theory nudges. Say `co-op` to resume.
-- **`co-op`** — Normal three-mode delegation with research growth focus (default).
+- **`co-op`** (default) — All work modes available. Learning overlays (predict, connect-to-theory, think-first) are active.
+- **`sprint`** — Agent-drive only. Learning overlays off. Maximum speed. Say `co-op` to resume.
 
 ## Communication Rules
 
