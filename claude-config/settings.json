@@ -12,6 +12,7 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:arxiv.org)",
       "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:pytorch.org)",
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(ls *)",
