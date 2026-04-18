@@ -87,7 +87,8 @@
   "enabledPlugins": {
     "swift-lsp@claude-plugins-official": true,
     "telegram@claude-plugins-official": true,
-    "chrome-devtools-mcp@claude-plugins-official": false
+    "chrome-devtools-mcp@claude-plugins-official": true
   },
-  "spinnerTipsEnabled": false
+  "spinnerTipsEnabled": false,
+  "tui": "default"
 }

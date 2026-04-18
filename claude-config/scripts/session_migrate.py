@@ -1,18 +1,28 @@
 #!/usr/bin/env python
-"""Migrate, export, and import Claude Code sessions.
+"""Migrate, export, import, and repair Claude Code sessions.
 
-When you move a project directory, Claude Code can no longer find the sessions
-because they're indexed by the absolute path. This script re-maps sessions
-from the old path to the new path.
+Claude Code indexes sessions by absolute project path. When you move or rename
+a project folder, sessions become invisible to `claude --resume`. This script
+fixes that by rewriting paths, and can also transfer sessions between machines.
 
-For cross-machine transfers, use --export to create a portable archive and
---import to unpack it on the target machine with automatic path rewriting.
+Quick start (run --help for full details):
 
-Usage:
-    python session_migrate.py /old/path /new/path             # migrate
-    python session_migrate.py --export .                      # export cwd project
-    python session_migrate.py --import archive.tar.gz         # import to cwd
-    python session_migrate.py --list                          # list all projects
+    # Browse
+    python session_migrate.py --list                 # all projects, spot MISSING paths
+    python session_migrate.py --sessions .           # sessions in cwd (UUIDs, sizes, topics)
+
+    # Restore a session to `claude --resume`
+    python session_migrate.py --resume-id <UUID>     # register by UUID from --sessions
+
+    # Repair (batch-fix orphaned sessions, stale paths)
+    python session_migrate.py --repair .             # audit & auto-fix cwd project
+
+    # Migrate (moved folder, same machine)
+    python session_migrate.py /old/path /new/path    # rewrite paths old -> new
+
+    # Cross-machine transfer
+    python session_migrate.py --export .             # pack into .tar.gz
+    python session_migrate.py --import archive.tar.gz  # unpack on target machine
 """
 
 import argparse
@@ -1051,6 +1061,488 @@ def select_source_fallback(
     return None
 
 
+# ── Sessions listing ────────────────────────────────────────────────────────
+
+def extract_first_user_message(jsonl_path: Path, max_chars: int = 80) -> str:
+    """Extract the first user message from a session JSONL file."""
+    try:
+        with open(jsonl_path, "r", errors="replace") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if entry.get("type") != "user":
+                    continue
+                msg = entry.get("message", {})
+                content = msg.get("content", "")
+                if isinstance(content, str):
+                    text = content
+                elif isinstance(content, list):
+                    text = ""
+                    for c in content:
+                        if isinstance(c, dict) and c.get("type") == "text":
+                            text = c.get("text", "")
+                            break
+                else:
+                    continue
+                # Strip command tags and whitespace
+                text = re.sub(r"<command-[^>]*>[^<]*</command-[^>]*>", "", text).strip()
+                if text:
+                    return text[:max_chars] + ("..." if len(text) > max_chars else "")
+    except OSError:
+        pass
+    return "(empty)"
+
+
+def extract_session_timestamp(jsonl_path: Path) -> tuple[str, str]:
+    """Extract first and last timestamps from a session JSONL file.
+
+    Returns (first_ts_iso, last_ts_iso) or ("?", "?") if not found.
+    """
+    first_ts = None
+    last_ts = None
+    try:
+        with open(jsonl_path, "r", errors="replace") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                ts = entry.get("timestamp")
+                if ts and isinstance(ts, (int, float)):
+                    if first_ts is None:
+                        first_ts = ts
+                    last_ts = ts
+    except OSError:
+        pass
+
+    def fmt(ts):
+        if ts is None:
+            return "?"
+        try:
+            return datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M")
+        except (OSError, ValueError):
+            return "?"
+
+    return fmt(first_ts), fmt(last_ts)
+
+
+def list_sessions(project_path: str):
+    """List all sessions for a project with timestamps, sizes, and summaries."""
+    project_path = os.path.normpath(os.path.abspath(project_path))
+    encoded = path_to_dirname(project_path)
+    project_dir = PROJECTS_DIR / encoded
+
+    if not project_dir.exists():
+        # Try finding by cwd in session data
+        for candidate in PROJECTS_DIR.iterdir():
+            if candidate.is_dir() and extract_cwd_from_project(candidate) == project_path:
+                project_dir = candidate
+                encoded = candidate.name
+                break
+        else:
+            print(f"{C_RED}ERROR: No sessions found for: {project_path}{C_RESET}")
+            print(f"  Looked for: {project_dir}")
+            print(f"\nUse --list to see all project paths.")
+            return
+
+    print(f"\n{C_BOLD}Sessions for:{C_RESET} {project_path}")
+    print(f"  Project dir: {project_dir}")
+    print()
+
+    jsonl_files = sorted(project_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)
+    if not jsonl_files:
+        print(f"  {C_YELLOW}No session files found.{C_RESET}")
+        return
+
+    # Collect history session IDs for cross-reference
+    history_sids = set()
+    if HISTORY_JSONL.exists():
+        try:
+            for line in HISTORY_JSONL.read_text(errors="replace").splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                    if entry.get("project") == project_path:
+                        sid = entry.get("sessionId", "")
+                        if sid:
+                            history_sids.add(sid)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+        except OSError:
+            pass
+
+    # Check session registry (active PIDs)
+    active_sids = set()
+    sessions_dir = CLAUDE_DIR / "sessions"
+    if sessions_dir.exists():
+        for sf in sessions_dir.glob("*.json"):
+            try:
+                data = json.loads(sf.read_text(errors="replace"))
+                sid = data.get("sessionId", "")
+                if sid:
+                    active_sids.add(sid)
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    print(f"{'#':<3}  {'Session ID':<38}  {'Last Modified':<18}  {'Size':>8}  {'Status':<12}  First Message")
+    print("─" * 140)
+
+    for i, jsonl in enumerate(jsonl_files, 1):
+        sid = jsonl.stem
+        size = jsonl.stat().st_size
+        mtime = datetime.fromtimestamp(jsonl.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+        first_msg = extract_first_user_message(jsonl)
+
+        # Determine status
+        statuses = []
+        if sid in active_sids:
+            statuses.append(f"{C_GREEN}ACTIVE{C_RESET}")
+        if sid in history_sids:
+            statuses.append(f"{C_GREEN}in-hist{C_RESET}")
+        else:
+            statuses.append(f"{C_RED}no-hist{C_RESET}")
+
+        # Check for companion directory (subagents, etc.)
+        has_dir = (project_dir / sid).is_dir()
+        if has_dir:
+            statuses.append("dir")
+
+        status_str = ",".join(statuses)
+        print(f"{i:<3}  {sid:<38}  {mtime:<18}  {human_size(size):>8}  {status_str:<12}  {first_msg}")
+
+    # Also check for memory dir
+    memory_dir = project_dir / "memory"
+    if memory_dir.is_dir():
+        mem_files = list(memory_dir.glob("*.md"))
+        print(f"\n  Memory: {len(mem_files)} file(s)")
+
+    print(f"\n  Total: {len(jsonl_files)} session(s)")
+    print(f"  {C_DIM}Status key: ACTIVE=running process, in-hist=in history.jsonl, no-hist=orphaned, dir=has companion dir{C_RESET}")
+    print(f"\n  To make a session resumable: python {sys.argv[0]} --resume-id <SESSION_ID>")
+    print(f"  To audit & fix: python {sys.argv[0]} --repair {project_path}")
+
+
+# ── Repair ──────────────────────────────────────────────────────────────────
+
+def repair_project(project_path: str, dry_run: bool = False):
+    """Audit and repair session/history mismatches for a project."""
+    project_path = os.path.normpath(os.path.abspath(project_path))
+    encoded = path_to_dirname(project_path)
+    project_dir = PROJECTS_DIR / encoded
+
+    prefix = f"{C_YELLOW}[DRY RUN]{C_RESET} " if dry_run else ""
+
+    if not project_dir.exists():
+        for candidate in PROJECTS_DIR.iterdir():
+            if candidate.is_dir() and extract_cwd_from_project(candidate) == project_path:
+                project_dir = candidate
+                encoded = candidate.name
+                break
+        else:
+            print(f"{C_RED}ERROR: No sessions found for: {project_path}{C_RESET}")
+            return False
+
+    print(f"\n{C_BOLD}Session Repair: {project_path}{C_RESET}")
+    print("─" * 60)
+
+    session_ids = collect_session_ids(project_dir)
+    print(f"  Session files: {len(session_ids)}")
+
+    # Collect history entries for this project
+    history_entries = {}  # sessionId -> list of entries
+    if HISTORY_JSONL.exists():
+        try:
+            for line in HISTORY_JSONL.read_text(errors="replace").splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                    if entry.get("project") == project_path:
+                        sid = entry.get("sessionId", "")
+                        if sid:
+                            history_entries.setdefault(sid, []).append(entry)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+        except OSError:
+            pass
+
+    history_sids = set(history_entries.keys())
+    file_sids = set(session_ids)
+
+    # Diagnose issues
+    orphaned = file_sids - history_sids  # sessions with no history entry
+    ghost = history_sids - file_sids     # history entries with no session file
+
+    issues_found = 0
+
+    # Report orphaned sessions (have file but no history entry)
+    if orphaned:
+        print(f"\n  {C_YELLOW}Orphaned sessions (file exists, not in history.jsonl):{C_RESET}")
+        for sid in sorted(orphaned):
+            jsonl = project_dir / f"{sid}.jsonl"
+            size = jsonl.stat().st_size if jsonl.exists() else 0
+            first_msg = extract_first_user_message(jsonl)
+            print(f"    {sid}  {human_size(size):>8}  {first_msg}")
+        issues_found += len(orphaned)
+
+    if ghost:
+        print(f"\n  {C_YELLOW}Ghost history entries (in history.jsonl, no session file):{C_RESET}")
+        for sid in sorted(ghost):
+            n_entries = len(history_entries[sid])
+            print(f"    {sid}  ({n_entries} history entries)")
+        issues_found += len(ghost)
+
+    # Check for path mismatches inside session files
+    path_mismatches = 0
+    for sid in session_ids:
+        jsonl = project_dir / f"{sid}.jsonl"
+        try:
+            with open(jsonl, "r", errors="replace") as f:
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        entry = json.loads(stripped)
+                        cwd = entry.get("cwd", "")
+                        if cwd and cwd != project_path and not cwd.startswith(project_path + "/"):
+                            path_mismatches += 1
+                            break
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+        except OSError:
+            continue
+
+    if path_mismatches:
+        print(f"\n  {C_YELLOW}Sessions with stale cwd paths: {path_mismatches}{C_RESET}")
+        issues_found += path_mismatches
+
+    if issues_found == 0:
+        print(f"\n  {C_GREEN}No issues found! All sessions are healthy.{C_RESET}")
+        return True
+
+    print(f"\n  Total issues: {issues_found}")
+
+    # Fix: add orphaned sessions to history.jsonl
+    if orphaned:
+        print(f"\n{prefix}Fixing orphaned sessions (adding to history.jsonl)...")
+
+        if not dry_run:
+            backup_path = HISTORY_JSONL.with_suffix(".jsonl.bak")
+            try:
+                shutil.copy2(HISTORY_JSONL, backup_path)
+                print(f"  Backed up history.jsonl -> history.jsonl.bak")
+            except OSError:
+                pass
+
+        new_entries = []
+        for sid in sorted(orphaned):
+            jsonl = project_dir / f"{sid}.jsonl"
+            first_msg = extract_first_user_message(jsonl, max_chars=120)
+            _, last_ts_str = extract_session_timestamp(jsonl)
+
+            # Find the last timestamp as epoch ms
+            last_ts_ms = None
+            try:
+                with open(jsonl, "r", errors="replace") as f:
+                    for line in f:
+                        stripped = line.strip()
+                        if not stripped:
+                            continue
+                        try:
+                            entry = json.loads(stripped)
+                            ts = entry.get("timestamp")
+                            if ts and isinstance(ts, (int, float)):
+                                last_ts_ms = int(ts)
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+            except OSError:
+                pass
+
+            if last_ts_ms is None:
+                # Use file mtime as fallback
+                last_ts_ms = int(jsonl.stat().st_mtime * 1000)
+
+            history_entry = {
+                "display": first_msg,
+                "pastedContents": {},
+                "timestamp": last_ts_ms,
+                "project": project_path,
+                "sessionId": sid,
+            }
+            new_entries.append(json.dumps(history_entry, ensure_ascii=False))
+            print(f"  {prefix}ADD: {sid}  ({first_msg[:60]})")
+
+        if new_entries and not dry_run:
+            try:
+                with open(HISTORY_JSONL, "a") as f:
+                    f.write("\n".join(new_entries) + "\n")
+                print(f"  {C_GREEN}Added {len(new_entries)} entries to history.jsonl{C_RESET}")
+            except OSError as e:
+                print(f"  {C_RED}ERROR writing history.jsonl: {e}{C_RESET}")
+
+    # Fix: clean ghost history entries (just warn, don't delete — they're harmless)
+    if ghost:
+        print(f"\n  {C_DIM}Ghost entries are harmless (history refs with no session file).{C_RESET}")
+        print(f"  {C_DIM}They may be from very short sessions that were cleaned up.{C_RESET}")
+
+    # Fix: path mismatches
+    if path_mismatches:
+        print(f"\n{prefix}Fixing stale cwd paths in session files...")
+        for sid in session_ids:
+            jsonl = project_dir / f"{sid}.jsonl"
+            # Read first to find old cwd
+            old_cwd = None
+            try:
+                with open(jsonl, "r", errors="replace") as f:
+                    for line in f:
+                        stripped = line.strip()
+                        if not stripped:
+                            continue
+                        try:
+                            entry = json.loads(stripped)
+                            cwd = entry.get("cwd", "")
+                            if cwd and cwd != project_path and not cwd.startswith(project_path + "/"):
+                                old_cwd = cwd
+                                break
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+            except OSError:
+                continue
+
+            if old_cwd:
+                n = update_jsonl_cwd(jsonl, old_cwd, project_path, dry_run)
+                if n > 0:
+                    print(f"  {prefix}{sid}: {n} entries fixed ({old_cwd} -> {project_path})")
+
+    print(f"\n{C_GREEN}{'[DRY RUN] ' if dry_run else ''}Repair complete!{C_RESET}")
+    return True
+
+
+# ── Resume by ID ────────────────────────────────────────────────────────────
+
+def resume_session_by_id(session_id: str):
+    """Make a specific session resumable by ensuring it's in history.jsonl.
+
+    This doesn't launch claude — it ensures the session is discoverable
+    by `claude --resume` by adding/updating its history.jsonl entry.
+    """
+    print(f"\n{C_BOLD}Resume Session Setup{C_RESET}")
+    print("─" * 50)
+    print(f"  Session ID: {session_id}")
+
+    # Find which project this session belongs to
+    found_project_dir = None
+    found_project_path = None
+
+    for project_dir in PROJECTS_DIR.iterdir():
+        if not project_dir.is_dir():
+            continue
+        jsonl = project_dir / f"{session_id}.jsonl"
+        if jsonl.exists():
+            found_project_dir = project_dir
+            found_project_path = extract_cwd_from_project(project_dir)
+            if not found_project_path:
+                found_project_path = dirname_to_path(project_dir.name)
+            break
+
+    if not found_project_dir:
+        print(f"\n{C_RED}ERROR: Session {session_id} not found in any project.{C_RESET}")
+        print(f"Use --sessions <path> to list available sessions.")
+        return False
+
+    jsonl = found_project_dir / f"{session_id}.jsonl"
+    size = jsonl.stat().st_size
+    first_msg = extract_first_user_message(jsonl)
+    _, last_ts_str = extract_session_timestamp(jsonl)
+
+    print(f"  Project: {found_project_path}")
+    print(f"  Size: {human_size(size)}")
+    print(f"  Last activity: {last_ts_str}")
+    print(f"  First message: {first_msg}")
+
+    # Check if already in history
+    already_in_history = False
+    if HISTORY_JSONL.exists():
+        try:
+            for line in HISTORY_JSONL.read_text(errors="replace").splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                    if entry.get("sessionId") == session_id:
+                        already_in_history = True
+                        break
+                except (json.JSONDecodeError, ValueError):
+                    continue
+        except OSError:
+            pass
+
+    if already_in_history:
+        print(f"\n  {C_GREEN}Session is already in history.jsonl (should be resumable).{C_RESET}")
+        print(f"\n  To resume: cd {found_project_path} && claude --resume")
+        return True
+
+    # Add to history
+    last_ts_ms = None
+    try:
+        with open(jsonl, "r", errors="replace") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                    ts = entry.get("timestamp")
+                    if ts and isinstance(ts, (int, float)):
+                        last_ts_ms = int(ts)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+    except OSError:
+        pass
+
+    if last_ts_ms is None:
+        last_ts_ms = int(jsonl.stat().st_mtime * 1000)
+
+    history_entry = {
+        "display": first_msg,
+        "pastedContents": {},
+        "timestamp": last_ts_ms,
+        "project": found_project_path,
+        "sessionId": session_id,
+    }
+
+    # Backup and append
+    backup_path = HISTORY_JSONL.with_suffix(".jsonl.bak")
+    try:
+        shutil.copy2(HISTORY_JSONL, backup_path)
+    except OSError:
+        pass
+
+    try:
+        with open(HISTORY_JSONL, "a") as f:
+            f.write(json.dumps(history_entry, ensure_ascii=False) + "\n")
+    except OSError as e:
+        print(f"\n{C_RED}ERROR writing history.jsonl: {e}{C_RESET}")
+        return False
+
+    print(f"\n  {C_GREEN}Added to history.jsonl!{C_RESET}")
+    print(f"\n  To resume: cd {found_project_path} && claude --resume")
+    return True
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -1058,26 +1550,83 @@ def main():
         description="Migrate, export, and import Claude Code sessions.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  # Migrate (same machine, moved folder)
-  %(prog)s --list                          # Show all projects and find missing paths
-  %(prog)s /old/path /new/path --dry-run   # Preview what would change
-  %(prog)s /old/path /new/path             # Perform the migration
-  %(prog)s --here                          # Interactive: pick source, migrate to cwd
+Quick Start:
+  %(prog)s --list                  # See all projects and spot missing paths
+  %(prog)s --sessions .            # See sessions in current project (with UUIDs)
+  %(prog)s --resume-id <UUID>      # Make a specific session resumable
+  claude --resume                  # Then resume it in Claude Code
+
+─── Browse & Inspect ───────────────────────────────────────────────────
+
+  --list          Show every project that has sessions stored. Displays
+                  path, session count, total size, and whether the path
+                  still exists. MISSING paths are migration candidates.
+
+  --sessions .    Show detailed info for each session in a project:
+                  session UUID, last-modified date, file size, history
+                  status (in-hist / no-hist / ACTIVE), and the first
+                  user message as a topic hint.
+                  Use '.' for cwd or pass an absolute path.
+
+─── Restore a Session ──────────────────────────────────────────────────
+
+  If `claude --resume` doesn't show a session you want, it's probably
+  missing from history.jsonl. Fix it in two steps:
+
+  1. Find the UUID:
+       %(prog)s --sessions .
+
+  2. Register it:
+       %(prog)s --resume-id <UUID>
+
+  Then `claude --resume` will list it.
+
+─── Repair ─────────────────────────────────────────────────────────────
+
+  %(prog)s --repair .              Audit current project for issues:
+                                   - orphaned sessions (file exists, not in history)
+                                   - ghost history entries (in history, no file)
+                                   - stale cwd paths inside session files
+                                   Fixes orphaned & stale paths automatically.
+  %(prog)s --repair . --dry-run    Preview what --repair would fix.
+
+─── Migrate (moved/renamed folder, same machine) ──────────────────────
+
+  When you move a project folder, Claude Code loses track of sessions
+  because they're indexed by the old absolute path. Migration rewrites
+  paths in session files, history.jsonl, and renames the project dir.
+
+  %(prog)s /old/path /new/path             # Explicit old -> new
+  %(prog)s /old/path /new/path --dry-run   # Preview first
+  %(prog)s --here                          # Interactive: pick source via fzf,
+                                           #   migrate into current directory
   %(prog)s --here --all                    # Show all projects (not just missing)
 
-  # Export (pack sessions for transfer to another machine)
-  %(prog)s --export .                      # Export current directory's sessions
-  %(prog)s --export /path/to/project       # Export specific project
-  %(prog)s --export                        # Interactive: pick project via fzf
-  %(prog)s --export . -o backup.tar.gz     # Custom output filename
-  %(prog)s --export . --dry-run            # Preview what would be exported
+─── Export / Import (cross-machine transfer) ───────────────────────────
 
-  # Import (unpack sessions on a new machine)
-  %(prog)s --import archive.tar.gz                     # Import to cwd
-  %(prog)s --import archive.tar.gz --target /new/path  # Import to specific path
-  %(prog)s --import archive.tar.gz --dry-run           # Preview import
-  %(prog)s --import archive.tar.gz --conflict overwrite
+  Export packs sessions, file-history snapshots, todos, tasks, memory,
+  and history entries into a portable .tar.gz archive. Import unpacks
+  it on the target machine and rewrites all paths automatically.
+
+  Export:
+    %(prog)s --export .                      # Export cwd project
+    %(prog)s --export /path/to/project       # Export specific project
+    %(prog)s --export                        # Pick project via fzf
+    %(prog)s --export . -o backup.tar.gz     # Custom output filename
+    %(prog)s --export . --dry-run            # Preview what would be packed
+
+  Import:
+    %(prog)s --import archive.tar.gz                     # Import to cwd
+    %(prog)s --import archive.tar.gz --target /new/path  # Import to specific path
+    %(prog)s --import archive.tar.gz --dry-run           # Preview first
+    %(prog)s --import archive.tar.gz --conflict overwrite # Overwrite existing
+
+  Typical workflow:
+    Machine A:  %(prog)s --export .          # -> project-claude-sessions.tar.gz
+    Transfer:   scp / airdrop / USB
+    Machine B:  git clone <repo> && cd <repo>
+                %(prog)s --import archive.tar.gz
+                claude --resume
         """,
     )
     parser.add_argument(
@@ -1090,11 +1639,14 @@ Examples:
     )
     parser.add_argument(
         "--list", action="store_true",
-        help="List all project paths with sessions (highlights missing paths)",
+        help="List all projects: path, session count, size, and whether the folder still exists. "
+             "MISSING paths are candidates for --here or explicit migration.",
     )
     parser.add_argument(
         "--here", action="store_true",
-        help="Interactive mode: use current directory as target, pick source via fzf",
+        help="Interactive migrate: opens fzf picker to choose a source project, "
+             "then migrates its sessions into the current directory. "
+             "By default only shows projects whose paths are MISSING (use --all to see all).",
     )
     parser.add_argument(
         "--all", action="store_true",
@@ -1106,12 +1658,15 @@ Examples:
     )
     parser.add_argument(
         "--export", metavar="PATH", nargs="?", const="__PICKER__", default=None,
-        help="Export project sessions to a portable archive. "
-             "Pass a project path, '.' for cwd, or omit for fzf picker.",
+        help="Pack sessions, file-history, todos, tasks, memory, and history entries "
+             "into a portable .tar.gz archive for cross-machine transfer. "
+             "Pass '.' for cwd, an absolute path, or omit to pick via fzf.",
     )
     parser.add_argument(
         "--import", dest="import_archive", metavar="ARCHIVE", default=None,
-        help="Import sessions from a .tar.gz archive",
+        help="Unpack a .tar.gz archive created by --export. Copies session files, "
+             "rewrites all paths to match --target (or cwd), and merges history entries. "
+             "Use --conflict to control behavior when sessions already exist.",
     )
     parser.add_argument(
         "--target", metavar="PATH", default=None,
@@ -1125,11 +1680,46 @@ Examples:
         "--conflict", choices=["skip", "overwrite", "abort"], default="skip",
         help="Conflict resolution for --import when sessions already exist (default: skip)",
     )
+    parser.add_argument(
+        "--sessions", metavar="PATH", default=None,
+        help="List each session in a project with: UUID, last-modified date, size, "
+             "history status (in-hist/no-hist/ACTIVE), and first user message. "
+             "Use '.' for current directory or pass an absolute path. "
+             "Copy a UUID from here to use with --resume-id.",
+    )
+    parser.add_argument(
+        "--repair", metavar="PATH", default=None,
+        help="Audit and auto-fix a project: registers orphaned sessions into history.jsonl, "
+             "reports ghost history entries, and rewrites stale cwd paths inside session files. "
+             "Use '.' for cwd. Combine with --dry-run to preview.",
+    )
+    parser.add_argument(
+        "--resume-id", metavar="UUID", default=None,
+        help="Register a session in history.jsonl so `claude --resume` can find it. "
+             "Get the UUID from --sessions output. If already registered, confirms status.",
+    )
 
     args = parser.parse_args()
 
     if args.list:
         list_projects()
+        return
+
+    # ── Sessions listing mode ──
+    if args.sessions is not None:
+        project_path = os.path.normpath(os.path.abspath(args.sessions))
+        list_sessions(project_path)
+        return
+
+    # ── Repair mode ──
+    if args.repair is not None:
+        project_path = os.path.normpath(os.path.abspath(args.repair))
+        repair_project(project_path, dry_run=args.dry_run)
+        return
+
+    # ── Resume by ID mode ──
+    if args.resume_id is not None:
+        resume_session_by_id(args.resume_id)
         return
 
     # ── Export mode ──
