@@ -199,7 +199,9 @@ fi
 
 if [[ ! -d ~/Applications/mailtemplete ]]; then
 	cp -r ./mailtemplete ~/Applications/
+	cp -r ./home-config/* ~/.config/
 fi
+
 
 git config --global user.email "gfgkmn@gmail.com"
 git config --global user.name "yuhe"
