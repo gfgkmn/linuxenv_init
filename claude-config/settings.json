@@ -78,6 +78,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-on-stop.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
