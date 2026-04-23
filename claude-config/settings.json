@@ -88,6 +88,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-on-prompt-submit.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
