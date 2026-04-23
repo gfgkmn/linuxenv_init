@@ -8,7 +8,8 @@ Subcommands:
   stats       Summary statistics
   delete      Delete sessions by filter
   rename      Set a session's custom title
-  search      Search user prompts across all sessions
+  search      Search all fields (user, assistant, tool calls/results, thinking)
+  view        Render a session as self-contained HTML and open in Chrome
   migrate     Rewrite session paths after moving/renaming a folder
   export      Pack sessions into a portable .tar.gz
   import      Unpack archive and rewrite paths
@@ -19,6 +20,7 @@ Without a subcommand, opens the interactive browser.
 """
 
 import argparse
+import html as htmlmod
 import json
 import os
 import re
@@ -29,6 +31,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import webbrowser
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -837,16 +840,51 @@ def rename_interactive(prefix: str) -> bool:
 
 # ── Search ───────────────────────────────────────────────────────────────────
 
-def search_user_prompts(query: str, use_regex: bool = False) -> list[dict]:
+_SCOPE_FIELDS = {
+    "all":       {"user", "asst", "tool", "tres", "think", "sum", "title"},
+    "user":      {"user"},
+    "assistant": {"asst"},
+    "tool":      {"tool", "tres"},
+    "thinking":  {"think"},
+    "summary":   {"sum", "title"},
+}
+
+
+def _windowed_excerpt(text: str, m_start: int, m_end: int, width: int = 160) -> str:
+    """Return text[m_start:m_end] with ±width/2 chars of context, ellipsis-padded."""
+    half = width // 2
+    start = max(0, m_start - half)
+    end = min(len(text), m_end + half)
+    excerpt = text[start:end]
+    if start > 0:
+        excerpt = "…" + excerpt
+    if end < len(text):
+        excerpt = excerpt + "…"
+    return excerpt
+
+
+def _find_match(text: str, query: str, pat) -> Optional[tuple]:
+    """Return (start, end) of first match in text, or None."""
+    if not text:
+        return None
+    if pat is not None:
+        m = pat.search(text)
+        return (m.start(), m.end()) if m else None
+    idx = text.lower().find(query.lower())
+    if idx < 0:
+        return None
+    return (idx, idx + len(query))
+
+
+def search_sessions(query: str, scope: str = "all", use_regex: bool = False) -> list[dict]:
+    allowed = _SCOPE_FIELDS.get(scope, _SCOPE_FIELDS["all"])
+    pat = None
     if use_regex:
         try:
             pat = re.compile(query, re.IGNORECASE)
         except re.error as e:
             print(f"{C_RED}ERROR: Invalid regex: {e}{C_RESET}")
             return []
-    else:
-        pat = None
-        q_lower = query.lower()
 
     results = []
     if not PROJECTS_DIR.exists():
@@ -857,63 +895,116 @@ def search_user_prompts(query: str, use_regex: bool = False) -> list[dict]:
             continue
         project_name = project_dir.name.replace("-", "/")
         for jsonl in sorted(project_dir.glob("*.jsonl")):
-            try:
-                lines = jsonl.read_text(errors="replace").splitlines()
-            except OSError:
-                continue
-
-            custom_title = ""
-            project_path = ""
-            match_excerpt = ""
-            match_msg_idx = -1
-            total_matches = 0
-            user_msg_count = 0
-
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-
-                etype = entry.get("type", "")
-                if etype == "custom-title":
-                    t = entry.get("customTitle", "")
-                    if t:
-                        custom_title = t
-                    continue
-                if etype == "user":
-                    msg = entry.get("message", {})
-                    if not isinstance(msg, dict) or msg.get("role") != "user":
-                        continue
-                    text = extract_text_from_content(msg.get("content", ""))
-                    text = clean_display_text(text)
-                    if not text or text in SKIP_USER_MESSAGES:
-                        continue
-                    user_msg_count += 1
-                    matched = (pat.search(text) if pat else q_lower in text.lower())
-                    if matched:
-                        total_matches += 1
-                        if not match_excerpt:
-                            match_excerpt = text
-                            match_msg_idx = user_msg_count
-                    if not project_path and entry.get("cwd"):
-                        project_path = entry.get("cwd", "")
-
-            if total_matches > 0:
-                results.append({
-                    "session_id": jsonl.stem,
-                    "project_name": project_name,
-                    "project_path": project_path,
-                    "jsonl_path": jsonl,
-                    "custom_title": custom_title,
-                    "match_excerpt": match_excerpt,
-                    "match_msg_idx": match_msg_idx,
-                    "total_matches": total_matches,
-                })
+            r = _search_one_session(jsonl, query, allowed, pat)
+            if r:
+                r["project_name"] = project_name
+                results.append(r)
     return results
+
+
+def _search_one_session(jsonl: Path, query: str, allowed_fields: set, pat) -> Optional[dict]:
+    try:
+        lines = jsonl.read_text(errors="replace").splitlines()
+    except OSError:
+        return None
+
+    state = {
+        "total": 0, "first_field": "", "match_excerpt": "",
+        "custom_title": "", "project_path": "",
+    }
+
+    def try_match(field: str, text: str, clean_first: bool = False):
+        if field not in allowed_fields:
+            return
+        if clean_first:
+            text = clean_display_text(text)
+        if not text or text in SKIP_USER_MESSAGES:
+            return
+        m = _find_match(text, query, pat)
+        if m is None:
+            return
+        state["total"] += 1
+        if not state["first_field"]:
+            state["first_field"] = field
+            excerpt = _windowed_excerpt(text, m[0], m[1])
+            state["match_excerpt"] = excerpt if clean_first else clean_display_text(excerpt)
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+        etype = entry.get("type", "")
+
+        if etype == "custom-title":
+            t = entry.get("customTitle", "")
+            if t:
+                state["custom_title"] = t
+                try_match("title", t)
+            continue
+        if etype == "summary":
+            try_match("sum", entry.get("summary", ""))
+            continue
+        if etype in ("queue-operation", "file-history-snapshot"):
+            continue
+
+        if not state["project_path"] and entry.get("cwd"):
+            state["project_path"] = entry.get("cwd", "")
+
+        msg = entry.get("message", {})
+        if not isinstance(msg, dict):
+            continue
+        content = msg.get("content", "")
+
+        if etype == "user":
+            if isinstance(content, str):
+                try_match("user", content, clean_first=True)
+            elif isinstance(content, list):
+                for block in content:
+                    if not isinstance(block, dict):
+                        continue
+                    btype = block.get("type", "")
+                    if btype == "text":
+                        try_match("user", block.get("text", ""), clean_first=True)
+                    elif btype == "tool_result":
+                        result_text = extract_text_from_content(block.get("content", ""))
+                        try_match("tres", result_text)
+
+        elif etype == "assistant":
+            if isinstance(content, list):
+                for block in content:
+                    if not isinstance(block, dict):
+                        continue
+                    btype = block.get("type", "")
+                    if btype == "text":
+                        try_match("asst", block.get("text", ""), clean_first=True)
+                    elif btype == "tool_use":
+                        name = block.get("name", "")
+                        try:
+                            input_str = json.dumps(block.get("input", {}), ensure_ascii=False)
+                        except (TypeError, ValueError):
+                            input_str = str(block.get("input", ""))
+                        try_match("tool", f"{name} {input_str}")
+                    elif btype == "thinking":
+                        try_match("think", block.get("thinking", ""))
+            elif isinstance(content, str):
+                try_match("asst", content, clean_first=True)
+
+    if state["total"] == 0:
+        return None
+    return {
+        "session_id": jsonl.stem,
+        "project_path": state["project_path"],
+        "jsonl_path": jsonl,
+        "custom_title": state["custom_title"],
+        "first_field": state["first_field"],
+        "match_excerpt": state["match_excerpt"],
+        "total_matches": state["total"],
+    }
 
 
 def run_search_fzf(results: list[dict]) -> Optional[dict]:
@@ -928,12 +1019,13 @@ def run_search_fzf(results: list[dict]) -> Optional[dict]:
         title = r["custom_title"] or r["match_excerpt"]
         title = truncate(clean_display_text(title), 60)
         n = r["total_matches"]
-        fzf_lines.append(f"{sid_short}  {project:<22s}  {n:>2} hit  {title}")
+        tag = (r.get("first_field") or "").ljust(5)
+        fzf_lines.append(f"{sid_short}  {project:<22s}  {n:>2} hit  {tag}  {title}")
 
     fzf_input = "\n".join(fzf_lines)
     header = (
         f"{len(results)} sessions matched · ENTER=show resume command · ESC=cancel\n"
-        "ID        Project                 Hits  Title/Excerpt"
+        "ID        Project                 Hits  Field  Title/Excerpt"
     )
     cmd = ["fzf", "--ansi", "--reverse", "--header", header, "--no-multi",
            "--no-separator", "--border=none", "--padding=0,1", "--margin=1"]
@@ -2120,6 +2212,313 @@ def resume_session_by_id(session_id: str) -> bool:
     return True
 
 
+# ── HTML render ──────────────────────────────────────────────────────────────
+
+def _fmt_ts_iso(ts) -> str:
+    if not ts:
+        return ""
+    if isinstance(ts, (int, float)):
+        try:
+            return datetime.fromtimestamp(ts / 1000 if ts > 1e12 else ts).strftime("%Y-%m-%d %H:%M:%S")
+        except (OSError, ValueError):
+            return ""
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return str(ts)
+
+
+def _strip_system_blocks_for_display(text: str) -> str:
+    if not text:
+        return ""
+    return SYSTEM_BLOCK_RE.sub("", text).strip()
+
+
+def iter_session_turns(jsonl_path: Path):
+    """Yield structured turns for HTML rendering.
+
+    Kinds: user, assistant, tool_use, tool_result, thinking, summary, custom-title.
+    """
+    try:
+        with open(jsonl_path, "r", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+
+                etype = entry.get("type", "")
+                ts = entry.get("timestamp", "")
+
+                if etype == "summary":
+                    yield {"kind": "summary", "text": entry.get("summary", ""), "ts": ts}
+                    continue
+                if etype == "custom-title":
+                    yield {"kind": "custom-title", "text": entry.get("customTitle", ""), "ts": ts}
+                    continue
+                if etype in ("queue-operation", "file-history-snapshot"):
+                    continue
+
+                msg = entry.get("message", {})
+                if not isinstance(msg, dict):
+                    continue
+                content = msg.get("content", "")
+
+                if etype == "user":
+                    if isinstance(content, str):
+                        text = content.strip()
+                        if text and text not in SKIP_USER_MESSAGES:
+                            yield {"kind": "user", "text": text, "ts": ts}
+                    elif isinstance(content, list):
+                        for block in content:
+                            if not isinstance(block, dict):
+                                continue
+                            btype = block.get("type", "")
+                            if btype == "text":
+                                text = block.get("text", "").strip()
+                                if text and text not in SKIP_USER_MESSAGES:
+                                    yield {"kind": "user", "text": text, "ts": ts}
+                            elif btype == "tool_result":
+                                result_text = extract_text_from_content(block.get("content", ""))
+                                yield {
+                                    "kind": "tool_result",
+                                    "tool_use_id": block.get("tool_use_id", ""),
+                                    "text": result_text,
+                                    "is_error": bool(block.get("is_error", False)),
+                                    "ts": ts,
+                                }
+
+                elif etype == "assistant":
+                    if isinstance(content, list):
+                        for block in content:
+                            if not isinstance(block, dict):
+                                continue
+                            btype = block.get("type", "")
+                            if btype == "text":
+                                text = block.get("text", "").strip()
+                                if text:
+                                    yield {"kind": "assistant", "text": text, "ts": ts}
+                            elif btype == "tool_use":
+                                yield {
+                                    "kind": "tool_use",
+                                    "tool_name": block.get("name", ""),
+                                    "tool_id": block.get("id", ""),
+                                    "tool_input": block.get("input", {}),
+                                    "ts": ts,
+                                }
+                            elif btype == "thinking":
+                                yield {
+                                    "kind": "thinking",
+                                    "text": block.get("thinking", ""),
+                                    "ts": ts,
+                                }
+                    elif isinstance(content, str):
+                        text = content.strip()
+                        if text:
+                            yield {"kind": "assistant", "text": text, "ts": ts}
+    except OSError:
+        return
+
+
+_HTML_CSS = """
+:root { color-scheme: light dark; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+       max-width: 1040px; margin: 1rem auto; padding: 0 1rem; line-height: 1.55;
+       color: #222; background: #fafafa; }
+@media (prefers-color-scheme: dark) {
+  body { color: #ddd; background: #1e1e1e; }
+  .turn.user { background: #1c3a5a !important; }
+  .turn.assistant { background: #2a2a2a !important; }
+  .turn.tool_use { background: #3d2e10 !important; }
+  .turn.tool_result { background: #2e1b3a !important; }
+  .turn.tool_result.error { background: #4a1818 !important; }
+  .turn.thinking { background: #222a2e !important; color: #aaa !important; }
+  header { border-color: #444 !important; }
+  .meta { color: #999 !important; }
+}
+header { border-bottom: 2px solid #ddd; padding-bottom: 0.6rem; margin-bottom: 1rem; }
+header h1 { margin: 0; font-size: 1.35rem; }
+.meta { color: #666; font-size: 0.85rem; margin-top: 0.35rem; }
+.meta div { margin: 0.1rem 0; }
+.toc { font-size: 0.8rem; color: #888; margin-top: 0.4rem; }
+.turn { margin: 0.7rem 0; padding: 0.7rem 1rem; border-radius: 8px; position: relative; }
+.turn .ts { font-size: 0.72rem; color: #999; position: absolute; top: 0.4rem; right: 0.7rem; }
+.turn pre { white-space: pre-wrap; word-wrap: break-word; margin: 0.3rem 0 0 0;
+            font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85rem; }
+.turn.user { background: #e3f2fd; border-left: 4px solid #2196f3; }
+.turn.assistant { background: #fff; border-left: 4px solid #9e9e9e; }
+.turn.tool_use { background: #fff3e0; border-left: 4px solid #ff9800; font-size: 0.85rem; }
+.turn.tool_result { background: #f3e5f5; border-left: 4px solid #9c27b0; font-size: 0.85rem; }
+.turn.tool_result.error { background: #ffebee; border-left-color: #f44336; }
+.turn.thinking { background: #eceff1; border-left: 4px solid #607d8b;
+                 font-style: italic; color: #555; font-size: 0.85rem; }
+details summary { cursor: pointer; font-weight: 600; }
+.role-tag { font-weight: bold; font-size: 0.72rem; text-transform: uppercase;
+            letter-spacing: 0.06em; display: block; }
+.tool-name { color: #ef6c00; font-family: ui-monospace, monospace; }
+a.anchor { color: #999; text-decoration: none; font-weight: normal;
+           font-size: 0.7rem; margin-left: 0.3rem; }
+a.anchor:hover { color: #2196f3; }
+"""
+
+
+def _render_turn_html(t: dict, idx: int, tool_id_to_name: dict) -> str:
+    kind = t["kind"]
+    anchor = f"t{idx}"
+    ts = _fmt_ts_iso(t.get("ts", ""))
+    ts_html = f"<span class='ts'>{htmlmod.escape(ts)}</span>" if ts else ""
+    a = f"<a class='anchor' href='#{anchor}'>#</a>"
+
+    if kind == "user":
+        text = _strip_system_blocks_for_display(t["text"])
+        if not text:
+            return ""
+        return (f"<section id='{anchor}' class='turn user'>{ts_html}"
+                f"<span class='role-tag'>User{a}</span>"
+                f"<pre>{htmlmod.escape(text)}</pre></section>")
+
+    if kind == "assistant":
+        text = _strip_system_blocks_for_display(t["text"])
+        if not text:
+            return ""
+        return (f"<section id='{anchor}' class='turn assistant'>{ts_html}"
+                f"<span class='role-tag'>Assistant{a}</span>"
+                f"<pre>{htmlmod.escape(text)}</pre></section>")
+
+    if kind == "tool_use":
+        name = t.get("tool_name", "?")
+        try:
+            input_str = json.dumps(t.get("tool_input", {}), indent=2, ensure_ascii=False)
+        except (TypeError, ValueError):
+            input_str = str(t.get("tool_input", ""))
+        return (f"<section id='{anchor}' class='turn tool_use'>{ts_html}"
+                f"<span class='role-tag'>🔧 Tool Call: "
+                f"<span class='tool-name'>{htmlmod.escape(name)}</span>{a}</span>"
+                f"<details open><summary>Input ({len(input_str)} chars)</summary>"
+                f"<pre>{htmlmod.escape(input_str)}</pre></details></section>")
+
+    if kind == "tool_result":
+        name = tool_id_to_name.get(t.get("tool_use_id", ""), "?")
+        result_text = t.get("text", "") or ""
+        is_error = t.get("is_error", False)
+        err_class = " error" if is_error else ""
+        label = "Tool Error" if is_error else "Tool Result"
+        body = htmlmod.escape(result_text)
+        if len(result_text) > 2000:
+            return (f"<section id='{anchor}' class='turn tool_result{err_class}'>{ts_html}"
+                    f"<span class='role-tag'>📋 {label}: "
+                    f"<span class='tool-name'>{htmlmod.escape(name)}</span>{a}</span>"
+                    f"<details><summary>Output ({len(result_text)} chars — click to expand)</summary>"
+                    f"<pre>{body}</pre></details></section>")
+        return (f"<section id='{anchor}' class='turn tool_result{err_class}'>{ts_html}"
+                f"<span class='role-tag'>📋 {label}: "
+                f"<span class='tool-name'>{htmlmod.escape(name)}</span>{a}</span>"
+                f"<pre>{body}</pre></section>")
+
+    if kind == "thinking":
+        text = (t.get("text", "") or "").strip()
+        if not text:
+            return ""
+        return (f"<section id='{anchor}' class='turn thinking'>{ts_html}"
+                f"<span class='role-tag'>💭 Thinking{a}</span>"
+                f"<details><summary>({len(text)} chars — click to expand)</summary>"
+                f"<pre>{htmlmod.escape(text)}</pre></details></section>")
+
+    return ""
+
+
+def render_session_html(jsonl_path: Path, si: Optional[SessionInfo] = None) -> str:
+    custom_title = ""
+    summary = ""
+    turns = []
+    for t in iter_session_turns(jsonl_path):
+        if t["kind"] == "custom-title":
+            if t["text"]:
+                custom_title = t["text"]
+        elif t["kind"] == "summary":
+            if not summary and t["text"]:
+                summary = t["text"]
+        else:
+            turns.append(t)
+
+    if si is None:
+        project_dir = jsonl_path.parent
+        readable = readable_project_name(project_dir.name)
+        index_data = load_sessions_index(project_dir)
+        si = build_session_info(jsonl_path, readable, index_entry=index_data.get(jsonl_path.stem))
+    if si is None:
+        si = SessionInfo(session_id=jsonl_path.stem, project_name=jsonl_path.parent.name,
+                         jsonl_path=jsonl_path)
+
+    title = custom_title or si.custom_title or summary or si.summary or f"Session {si.session_id[:8]}"
+    project_path = si.project_path or si.project_name
+
+    tool_id_to_name = {
+        t.get("tool_id", ""): t.get("tool_name", "")
+        for t in turns if t["kind"] == "tool_use"
+    }
+
+    parts = [
+        "<!DOCTYPE html>",
+        "<html lang='en'><head><meta charset='utf-8'>",
+        f"<title>{htmlmod.escape(title)}</title>",
+        f"<style>{_HTML_CSS}</style>",
+        "</head><body>",
+        "<header>",
+        f"<h1>{htmlmod.escape(title)}</h1>",
+        "<div class='meta'>",
+        f"<div><b>Session:</b> <code>{htmlmod.escape(si.session_id)}</code></div>",
+        f"<div><b>Path:</b> <code>{htmlmod.escape(shorten_home(project_path))}</code></div>",
+    ]
+    if si.git_branch:
+        parts.append(f"<div><b>Branch:</b> <code>{htmlmod.escape(si.git_branch)}</code></div>")
+    parts.append(
+        f"<div><b>Turns:</b> {len(turns)} · "
+        f"<b>Size:</b> {human_size(si.total_size_bytes)} · "
+        f"<b>Modified:</b> {format_date(si.modified)}</div>"
+    )
+    if summary and summary != title:
+        parts.append(f"<div><b>Summary:</b> {htmlmod.escape(summary)}</div>")
+    parts.append("<div class='toc'>Tip: use Ctrl-F / ⌘-F to search the full transcript.</div>")
+    parts.append("</div></header><main>")
+
+    for i, t in enumerate(turns, 1):
+        block = _render_turn_html(t, i, tool_id_to_name)
+        if block:
+            parts.append(block)
+
+    parts.append("</main></body></html>")
+    return "\n".join(parts)
+
+
+def _open_in_browser(path: Path) -> bool:
+    """Try Chrome first on macOS, fall back to default browser."""
+    url = path.as_uri()
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(["open", "-a", "Google Chrome", str(path)],
+                           check=True, capture_output=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+    elif sys.platform.startswith("linux"):
+        for cmd in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
+            if shutil.which(cmd):
+                try:
+                    subprocess.Popen([cmd, str(path)],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    return True
+                except OSError:
+                    continue
+    try:
+        return webbrowser.open(url)
+    except webbrowser.Error:
+        return False
+
+
 # ── Preview callback ────────────────────────────────────────────────────────
 
 def handle_preview(session_id_prefix: str) -> None:
@@ -2249,7 +2648,7 @@ def cmd_rename_interactive(args):
 
 
 def cmd_search(args):
-    results = search_user_prompts(args.query, use_regex=args.regex)
+    results = search_sessions(args.query, scope=args.scope, use_regex=args.regex)
     if not results:
         print(f"No sessions matched: {args.query!r}")
         return 0
@@ -2307,6 +2706,56 @@ def cmd_resume(args):
     return 0 if resume_session_by_id(args.session_id) else 1
 
 
+def cmd_view(args):
+    if args.session_id:
+        matches = find_sessions_by_prefix(args.session_id)
+        if not matches:
+            print(f"{C_RED}ERROR: No session found with prefix '{args.session_id}'.{C_RESET}")
+            return 1
+        if len(matches) > 1:
+            print(f"{C_RED}ERROR: Ambiguous prefix '{args.session_id}' — matches {len(matches)}:{C_RESET}")
+            for m in matches:
+                print(f"  {m.stem}  ({m.parent.name})")
+            return 1
+        jsonl = matches[0]
+    else:
+        sessions = scan_projects()
+        sessions = apply_filters(sessions, args)
+        if not sessions:
+            print("No sessions to pick from.")
+            return 1
+        picked = run_fzf(sessions)
+        if not picked:
+            print("No session selected.")
+            return 1
+        jsonl = picked[0].jsonl_path
+
+    print(f"Rendering {jsonl.stem[:8]}...")
+    html_doc = render_session_html(jsonl)
+
+    if args.output:
+        out_path = Path(args.output).expanduser().resolve()
+    else:
+        out_path = Path(tempfile.gettempdir()) / f"claude-session-{jsonl.stem[:8]}.html"
+
+    try:
+        out_path.write_text(html_doc, encoding="utf-8")
+    except OSError as e:
+        print(f"{C_RED}ERROR writing {out_path}: {e}{C_RESET}")
+        return 1
+
+    print(f"  Wrote {human_size(out_path.stat().st_size)} to {out_path}")
+
+    if args.no_open:
+        return 0
+    if _open_in_browser(out_path):
+        print(f"  Opened in browser.")
+    else:
+        print(f"{C_YELLOW}Could not auto-open browser.{C_RESET}")
+        print(f"  Open manually: {out_path.as_uri()}")
+    return 0
+
+
 def cmd_preview(args):
     handle_preview(args.session_id)
     return 0
@@ -2354,9 +2803,22 @@ def main():
     p = sub.add_parser("rename-interactive", help="Interactive rename (used by ctrl-r bind)")
     p.add_argument("session_id", help="Session UUID prefix")
 
-    p = sub.add_parser("search", help="Search user prompts")
+    p = sub.add_parser("search", help="Search all fields across sessions")
     p.add_argument("query", help="Search query")
     p.add_argument("--regex", action="store_true")
+    p.add_argument("--scope",
+                   choices=["all", "user", "assistant", "tool", "thinking", "summary"],
+                   default="all",
+                   help="Which fields to search (default: all)")
+
+    p = sub.add_parser("view", help="Render a session as HTML and open in Chrome")
+    _add_filter_args(p)
+    p.add_argument("session_id", nargs="?", default=None,
+                   help="Session UUID prefix (omit for fzf picker)")
+    p.add_argument("-o", "--output", default=None, metavar="FILE",
+                   help="Write HTML here (default: temp file)")
+    p.add_argument("--no-open", action="store_true",
+                   help="Write file but don't launch browser")
 
     p = sub.add_parser("migrate", help="Migrate sessions (moved folder, same machine)")
     p.add_argument("old_path", nargs="?", default=None)
@@ -2394,7 +2856,7 @@ def main():
         "browse": cmd_browse, "delete": cmd_delete, "list": cmd_list,
         "sessions": cmd_sessions, "stats": cmd_stats, "table": cmd_table,
         "rename": cmd_rename, "rename-interactive": cmd_rename_interactive,
-        "search": cmd_search, "migrate": cmd_migrate,
+        "search": cmd_search, "view": cmd_view, "migrate": cmd_migrate,
         "export": cmd_export, "import": cmd_import,
         "repair": cmd_repair, "resume": cmd_resume,
         "preview": cmd_preview, "fzf-lines": cmd_fzf_lines,
