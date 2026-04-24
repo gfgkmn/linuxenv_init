@@ -114,22 +114,33 @@ printf "  💰\$%.4f \033[1;${ctx_color}mctx:%d%%\033[0m %b %b \033[1;34m❯\033
 if [ -n "$session_id" ]; then
     state_dir="$HOME/.claude/cc-state"
     mkdir -p "$state_dir" 2>/dev/null
+    # `host' and `tmux_session' are captured here (shell context) because
+    # jq can't read them from the CC stdin payload.
+    host_s=$(hostname -s 2>/dev/null || echo "")
+    tmux_s=$(tmux display-message -p '#S' 2>/dev/null || echo "")
     {
-        echo "$input" | jq -c --arg t "$(date +%s)" '{
-            session_id,
-            session_name: (.session_name // null),
-            cwd: .workspace.current_dir,
-            project_dir: .workspace.project_dir,
-            model: .model.display_name,
-            cost_usd: .cost.total_cost_usd,
-            ctx_used_pct: .context_window.used_percentage,
-            ctx_in: .context_window.total_input_tokens,
-            ctx_out: .context_window.total_output_tokens,
-            ctx_size: .context_window.context_window_size,
-            exceeds_200k: .exceeds_200k_tokens,
-            rate_5h: (.rate_limits.five_hour.used_percentage // null),
-            rate_7d: (.rate_limits.seven_day.used_percentage // null),
-            updated_at: ($t | tonumber)
-        }' > "$state_dir/$session_id.json"
+        echo "$input" | jq -c \
+            --arg t "$(date +%s)" \
+            --arg host "$host_s" \
+            --arg tmux "$tmux_s" \
+            '{
+                session_id,
+                session_name: (.session_name // null),
+                cwd: .workspace.current_dir,
+                project_dir: .workspace.project_dir,
+                model: .model.display_name,
+                cost_usd: .cost.total_cost_usd,
+                ctx_used_pct: .context_window.used_percentage,
+                ctx_in: .context_window.total_input_tokens,
+                ctx_out: .context_window.total_output_tokens,
+                ctx_size: .context_window.context_window_size,
+                exceeds_200k: .exceeds_200k_tokens,
+                rate_5h: (.rate_limits.five_hour.used_percentage // null),
+                rate_7d: (.rate_limits.seven_day.used_percentage // null),
+                transcript_path: .transcript_path,
+                host: $host,
+                tmux_session: (if $tmux == "" then null else $tmux end),
+                updated_at: ($t | tonumber)
+            }' > "$state_dir/$session_id.json"
     } 2>/dev/null || true
 fi
