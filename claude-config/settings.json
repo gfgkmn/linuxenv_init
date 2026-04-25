@@ -52,19 +52,13 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python ~/.claude/hooks/audit_edit.py"
-          }
+          {"type": "command", "command": "python ~/.claude/hooks/audit_edit.py"}
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/enforce-tmux.sh"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/enforce-tmux.sh"}
         ]
       }
     ],
@@ -72,30 +66,28 @@
       {
         "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'input=$(cat); tool=$(echo \"$input\" | jq -r .tool_name); file=$(echo \"$input\" | jq -r \"(.tool_input.file_path // .tool_input.notebook_path)\"); ts=$(date +%s); mkdir -p .claude && echo \"{\\\"ts\\\":$ts,\\\"tool\\\":\\\"$tool\\\",\\\"file\\\":\\\"$file\\\"}\" >> .claude/changes.jsonl'"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/cc-bridge-on-stop.sh"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-changes-log.sh"}
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/cc-bridge-on-prompt-submit.sh"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh prompt-submit"}
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh notify"}
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"}
         ]
       }
     ]

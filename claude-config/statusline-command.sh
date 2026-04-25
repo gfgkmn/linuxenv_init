@@ -117,7 +117,18 @@ if [ -n "$session_id" ]; then
     # `host' and `tmux_session' are captured here (shell context) because
     # jq can't read them from the CC stdin payload.
     host_s=$(hostname -s 2>/dev/null || echo "")
-    tmux_s=$(tmux display-message -p '#S' 2>/dev/null || echo "")
+    # Only report a tmux session when THIS CC process is actually running
+    # inside one.  `$TMUX' is set by tmux for processes spawned under a
+    # tmux pane; without this guard, `tmux display-message -p #S' falls
+    # back to whichever session was most-recently-attached on the tmux
+    # server — completely unrelated to CC's context — and we'd write the
+    # wrong tmux name into cc-state.  That misroute used to bite
+    # claude-code-bridge's commit-draft (multi-line fallback path).
+    if [ -n "${TMUX:-}" ]; then
+        tmux_s=$(tmux display-message -p '#S' 2>/dev/null || echo "")
+    else
+        tmux_s=""
+    fi
     {
         echo "$input" | jq -c \
             --arg t "$(date +%s)" \
