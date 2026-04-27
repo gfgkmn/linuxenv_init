@@ -102,5 +102,5 @@
     "chrome-devtools-mcp@claude-plugins-official": true
   },
   "spinnerTipsEnabled": false,
-  "tui": "default"
+  "tui": "fullscreen"
 }
