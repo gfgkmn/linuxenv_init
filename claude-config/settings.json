@@ -52,13 +52,19 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {"type": "command", "command": "python ~/.claude/hooks/audit_edit.py"}
+          {
+            "type": "command",
+            "command": "python ~/.claude/hooks/audit_edit.py"
+          }
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          {"type": "command", "command": "bash ~/.claude/hooks/enforce-tmux.sh"}
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/enforce-tmux.sh"
+          }
         ]
       }
     ],
@@ -66,28 +72,40 @@
       {
         "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
-          {"type": "command", "command": "bash ~/.claude/hooks/cc-changes-log.sh"}
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-changes-log.sh"
+          }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh prompt-submit"}
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh prompt-submit"
+          }
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh notify"}
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh notify"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"}
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"
+          }
         ]
       }
     ]
