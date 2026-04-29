@@ -76,7 +76,9 @@ import sys, json, os, re, fnmatch
 from urllib.parse import urlparse
 
 def split_shell(cmd):
-    pieces = re.split(r"\s*(?:;|&&|\|\||\|)\s*", cmd)
+    # Bash treats a bare newline as a command separator (equivalent to ;).
+    # Include it in the alternation so multi-line commands split into pieces.
+    pieces = re.split(r"\s*(?:;|&&|\|\||\||\n)\s*", cmd)
     return [p.strip() for p in pieces if p.strip()]
 
 def strip_redirs(piece):
