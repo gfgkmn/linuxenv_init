@@ -205,10 +205,18 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
             | tr -d '[:space:]"')
   [ "$probe" = "t" ] || fail "bridge not loaded / emacs unreachable"
 
+  # `$ITERM_SESSION_ID' is set by iTerm in every pane (via the
+  # `Setting environment variables' integration) and cascades down
+  # through the shell → CC → CC's hook child.  This is the ONLY
+  # place the (uuid → iTerm pane id) binding is known to be
+  # ground-truth — passed to elisp here so the bridge can cache it
+  # for handoff resolution.  Empty when not running under iTerm.
+  iterm_iid="${ITERM_SESSION_ID:-}"
   payload=$(mktemp -t "cc-bridge-payload.XXXXXX") || fail "mktemp payload"
   printf '%s' "$input" > "$payload" || { rm -f "$payload"; fail "write payload"; }
-  log "local emacsclient → $payload"
-  emacsclient --no-wait --eval "($ec_fn \"$payload\")" >/dev/null 2>&1 \
+  log "local emacsclient → $payload  iid=${iterm_iid:-<none>}"
+  emacsclient --no-wait \
+    --eval "($ec_fn \"$payload\" \"$iterm_iid\")" >/dev/null 2>&1 \
     || log "emacsclient call failed"
   [[ "$event" == "pretool" ]] && emit_defer
   exit 0
