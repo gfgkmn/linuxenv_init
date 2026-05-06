@@ -35,6 +35,19 @@ emit_defer() {
 #   * stop / prompt-submit / notify / posttool → exit 0 silently.
 #   * pretool                                  → emit `defer' so CC's
 #                                                TUI handles the prompt.
+# ── Global kill switch ───────────────────────────────────────────────
+# Single file presence test: when present, EVERY hook event (across
+# every session) short-circuits.  Coarser than the per-session
+# disable below — used by `M-x claude-code-bridge-toggle-bridge-globally'
+# (Emacs side) or `cc-bridge-toggle-globally' (CLI / slash command)
+# to silence the bridge entirely without per-session bookkeeping.
+GLOBAL_DISABLE_FILE="${HOME}/.claude/cc-bridge-disabled-globally"
+if [[ -e "$GLOBAL_DISABLE_FILE" ]]; then
+  log "GLOBAL DISABLE active — short-circuit (event=$event)"
+  [[ "$event" == "pretool" ]] && emit_defer
+  exit 0
+fi
+
 DISABLE_FILE="${HOME}/.claude/cc-bridge-disabled-uuids"
 if [[ -r "$DISABLE_FILE" ]]; then
   payload_uuid="$(printf %s "$input" \
