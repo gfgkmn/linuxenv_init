@@ -38,7 +38,12 @@
       "Bash(awk *)",
       "Bash(sort *)",
       "Bash(uniq *)",
-      "Bash(tmux capture-pane:*)"
+      "Bash(tmux capture-pane:*)",
+      "Bash(python ~/.claude/scripts/preset_switch.py:*)",
+      "Bash(~/Applications/bin/cc-bridge-toggle-globally)",
+      "Bash(~/Applications/bin/cc-bridge-toggle-globally *)",
+      "Bash(~/Applications/bin/cc-bridge-toggle)",
+      "Bash(~/Applications/bin/cc-bridge-toggle *)"
     ],
     "deny": [
       "Read(**/.env)",
@@ -52,19 +57,19 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python ~/.claude/hooks/audit_edit.py"
-          }
+          {"type": "command", "command": "python ~/.claude/hooks/audit_edit.py"}
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/enforce-tmux.sh"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/enforce-tmux.sh"}
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh pretool"}
         ]
       }
     ],
@@ -72,40 +77,34 @@
       {
         "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/cc-changes-log.sh"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-changes-log.sh"}
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh posttool"}
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh prompt-submit"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh prompt-submit"}
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh notify"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh notify"}
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"
-          }
+          {"type": "command", "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"}
         ]
       }
     ]
@@ -120,5 +119,7 @@
     "chrome-devtools-mcp@claude-plugins-official": true
   },
   "spinnerTipsEnabled": false,
-  "tui": "fullscreen"
+  "tui": "fullscreen",
+  "theme": "dark-daltonized",
+  "editorMode": "vim"
 }
