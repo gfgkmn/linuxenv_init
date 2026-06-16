@@ -14,7 +14,7 @@ Tmux usage has two distinct triggers. They exist for different purposes and use 
 
 The agent decides to use tmux because it is about to run a long-running shell task (training, data processing, builds, bulk file ops, network transfers). The pane sits at a shell prompt; agent drives.
 
-- Use `bash ~/.claude/scripts/tmux-exec.sh <session> <command>` to send and wait for completion. It appends `; tmux wait-for -S <signal>` to your command — this requires a shell to execute it, so it is valid only at a shell prompt.
+- Use `~/.claude/scripts/tmux-exec.sh <session> <command>` to send and wait for completion. It appends `; tmux wait-for -S <signal>` to your command — this requires a shell to execute it, so it is valid only at a shell prompt.
 - NEVER use `| tee` inside tmux — it blocks Ctrl+C signal propagation.
 - NEVER use `> log.txt 2>&1` redirection — it hides output from the user watching tmux.
 - **When logging is needed** (long-running tasks, experiments, or user asks), use `tmux pipe-pane` instead of output redirection. It captures to a file while keeping output visible in tmux:
@@ -22,7 +22,7 @@ The agent decides to use tmux because it is about to run a long-running shell ta
   # Enable logging (only when needed)
   tmux pipe-pane -t <session> -o 'cat >> /tmp/tmux-<session>.log'
   # Run the command
-  bash ~/.claude/scripts/tmux-exec.sh <session> "python train.py --epochs 5"
+  ~/.claude/scripts/tmux-exec.sh <session> "python train.py --epochs 5"
   # Stop logging when done
   tmux pipe-pane -t <session>
   ```
@@ -37,7 +37,7 @@ The agent decides to use tmux because it is about to run a long-running shell ta
 The user has prepared a live REPL in tmux (IPython, ipdb, pdb, plain Python `>>>`) and asked the agent to cooperate inside it — inspect state, suggest next commands, read output together. User drives; agent assists.
 
 - **Do NOT use `tmux-exec.sh`.** REPLs have no shell exit, so its `; tmux wait-for -S <signal>` payload is typed into the REPL and either errors or hangs forever.
-- Use `bash ~/.claude/scripts/tmux-capture.sh <session> [lines]` to read the pane (default 50 lines). This is the canonical read tool for Manual Trigger mode.
+- Use `~/.claude/scripts/tmux-capture.sh <session> [lines]` to read the pane (default 50 lines). This is the canonical read tool for Manual Trigger mode.
 - To send keys, use plain `tmux send-keys -t <session> '<text>' Enter`.
 - **Reversibility gate for sending keys.** You do NOT need to ask before every keystroke — that is noise. Ask only when the keys would change global state in a way that is hard to reverse or fall back from. Examples of things to ask about first: `!rm`/`rm` shell escapes, overwriting files on disk, `del var` for state the user cares about, `globals().clear()`, `pip install` / env mutations, closing DB/network connections, writes to remote services, clearing caches that took time to build. Reversible introspection does NOT need asking: reading values (`x.shape`, `print(x)`), computing into fresh variables, stepping with `n`/`s`/`c` in pdb, evaluating expressions, `%whos` / `dir()` / `type()`.
 - Prompt signatures that indicate Manual Trigger: `In [N]:` (IPython), `(Pdb)` (pdb), `ipdb>` (ipdb), `>>>` (plain Python). If you see one of these as the last non-empty pane line AND the user has asked you to cooperate in it, you are in Manual Trigger mode. Extend the list as needed for Node (`> `), psql (`=#`), etc. — SSH is excluded (see Auto Trigger).

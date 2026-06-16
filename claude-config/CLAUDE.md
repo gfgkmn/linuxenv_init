@@ -37,13 +37,13 @@ If a hook rejects a command with "use tmux": run the ORIGINAL command in tmux. D
 When unsure whether a command will be long-running (large directories, bulk file ops, network transfers): default to tmux.
 
   **Waiting for tmux commands to finish:**
-  Use `bash ~/.claude/scripts/tmux-exec.sh <session> <command>` to send a command and wait for completion.
+  Use `~/.claude/scripts/tmux-exec.sh <session> <command>` to send a command and wait for completion.
   It blocks until done and returns the pane output. NEVER use `sleep N && tmux capture-pane` — it is blocked by a hook.
-  Example: `bash ~/.claude/scripts/tmux-exec.sh claude-running-myproject "python train.py --epochs 5"`
+  Example: `~/.claude/scripts/tmux-exec.sh claude-running-myproject "python train.py --epochs 5"`
 
 ### Manual Trigger (user-initiated, interactive REPL)
 
-If the pane shows a REPL prompt (`In [N]:`, `(Pdb)`, `ipdb>`, `>>>`) AND the user has asked you to cooperate in it: do NOT use `tmux-exec.sh` (its wait-for payload hangs in a REPL). Use `bash ~/.claude/scripts/tmux-capture.sh <session> [lines]` to read, and plain `tmux send-keys` to send. Ask before sending keys only when they would change global state irreversibly (`rm`, file overwrites, `pip install`, `del`, connection-closing, remote writes) — reversible introspection does not need asking. SSH is NOT a REPL for this rule.
+If the pane shows a REPL prompt (`In [N]:`, `(Pdb)`, `ipdb>`, `>>>`) AND the user has asked you to cooperate in it: do NOT use `tmux-exec.sh` (its wait-for payload hangs in a REPL). Use `~/.claude/scripts/tmux-capture.sh <session> [lines]` to read, and plain `tmux send-keys` to send. Ask before sending keys only when they would change global state irreversibly (`rm`, file overwrites, `pip install`, `del`, connection-closing, remote writes) — reversible introspection does not need asking. SSH is NOT a REPL for this rule.
 
 ## Debugging Discipline
 

@@ -41,6 +41,8 @@
       "Bash(sort *)",
       "Bash(uniq *)",
       "Bash(tmux capture-pane:*)",
+      "Bash(~/.claude/scripts/tmux-exec.sh:*)",
+      "Bash(~/.claude/scripts/tmux-capture.sh:*)",
       "Bash(python ~/.claude/scripts/preset_switch.py:*)",
       "Bash(~/Applications/bin/cc-bridge-toggle-globally)",
       "Bash(~/Applications/bin/cc-bridge-toggle-globally *)",

@@ -145,7 +145,7 @@ python ~/.claude/scripts/session.py migrate /old/path /new/path --dry-run
 
 ### Important notes
 
-- All commands should run via tmux (`bash ~/.claude/scripts/tmux-exec.sh`) since the script may take time to scan session files.
+- All commands should run via tmux (`~/.claude/scripts/tmux-exec.sh`) since the script may take time to scan session files.
 - Safe to run directly (no TTY needed): `list`, `sessions`, `stats`, `table`, `rename`, `resume`, `repair`, `export`.
 - Need tmux / real terminal: `delete` (fzf), `search` (fzf), `migrate --here` (fzf), `import` (y/N prompt).
 - Always show the script output to the user — don't summarize or hide it.

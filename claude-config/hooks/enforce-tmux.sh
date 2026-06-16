@@ -30,7 +30,7 @@ COMMAND_TRIMMED=$(echo "$COMMAND" | sed 's/^[[:space:]]*//')
 
 # ── Rule: Block sleep+capture-pane pattern (use tmux-exec.sh instead) ──
 if echo "$COMMAND" | grep -qE 'sleep\s+[0-9]+.*tmux\s+capture-pane'; then
-  deny "Do NOT use sleep+capture-pane to poll tmux. Use: bash ~/.claude/scripts/tmux-exec.sh <session> <command> — it waits for completion instantly via tmux wait-for."
+  deny "Do NOT use sleep+capture-pane to poll tmux. Use: ~/.claude/scripts/tmux-exec.sh <session> <command> — it waits for completion instantly via tmux wait-for."
 fi
 
 # ── Rule: Block pipe-to-tee inside tmux send-keys ──
@@ -92,7 +92,7 @@ for pattern in "${ALWAYS_LONG_BINARIES[@]}"; do
     if echo "$COMMAND" | grep -q "tmux"; then
       allow
     fi
-    deny "Long-running command. Run in tmux: bash ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
+    deny "Long-running command. Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
   fi
 done
 
@@ -133,7 +133,7 @@ if echo "$COMMAND_TRIMMED" | grep -qE "^python[3]? "; then
       if echo "$COMMAND" | grep -q "tmux"; then
         allow
       fi
-      deny "'$SCRIPT_ARG' looks long-running. Run in tmux: bash ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
+      deny "'$SCRIPT_ARG' looks long-running. Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
     fi
   done
 
@@ -157,7 +157,7 @@ if echo "$COMMAND_TRIMMED" | grep -qE "^python[3]? "; then
       if echo "$COMMAND" | grep -q "tmux"; then
         allow
       fi
-      deny "Arguments suggest long-running task ($pattern). Run in tmux: bash ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
+      deny "Arguments suggest long-running task ($pattern). Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
     fi
   done
 fi
@@ -179,7 +179,7 @@ for pattern in "${OTHER_LONG_PATTERNS[@]}"; do
     if echo "$COMMAND" | grep -q "tmux"; then
       allow
     fi
-    deny "This looks long-running. Run in tmux: bash ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
+    deny "This looks long-running. Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
   fi
 done
 
