@@ -150,5 +150,6 @@
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
-  "editorMode": "vim"
+  "editorMode": "vim",
+  "agentPushNotifEnabled": true
 }
