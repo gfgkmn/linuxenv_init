@@ -22,6 +22,7 @@ cwd=$(echo "$input" | jq -r '.workspace.current_dir // empty')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 ctx_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
 session_id=$(echo "$input" | jq -r '.session_id // empty')
+model_name=$(echo "$input" | jq -r '.model.display_name // empty')
 current_date=$(date "+%m/%d/%y")
 current_time=$(date "+%H:%M:%S")
 
@@ -103,8 +104,8 @@ esac
 printf "\033[1;34m[claude]:\033[0m \033[1;32m%s\033[0m %b\033[1;36m%s\t\033[1;35m%s %s\033[0m\n" \
     "$git_info" "$conda_info" "$cwd" "$current_date" "$current_time"
 
-printf "  💰\$%.4f \033[1;${ctx_color}mctx:%d%%\033[0m %b %b \033[1;34m❯\033[0m" \
-    "$cost" "$ctx_pct" "$ctx_bar" "$audit_badge"
+printf "  💰\$%.4f \033[1;${ctx_color}mctx:%d%%\033[0m %b %b \033[2m%s\033[0m \033[1;34m❯\033[0m" \
+    "$cost" "$ctx_pct" "$ctx_bar" "$audit_badge" "$model_name"
 
 # ── State export for claude-code-bridge dashboard ───────────────────────
 # Writes ~/.claude/cc-state/<session_id>.json on every tick. Per-UUID files
