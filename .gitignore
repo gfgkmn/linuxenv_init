@@ -3,16 +3,3 @@ claude-config/.claude/
 .DS_Store
 __pycache__/
 *.lprof
-
-# Cloudflare skill packs: vendored from their marketplace, reinstallable from
-# there, and unrelated to anything this repo sets up.  Kept on disk, out of git.
-claude-config/skills/agents-sdk/
-claude-config/skills/cloudflare/
-claude-config/skills/cloudflare-email-service/
-claude-config/skills/cloudflare-one/
-claude-config/skills/cloudflare-one-migrations/
-claude-config/skills/durable-objects/
-claude-config/skills/sandbox-sdk/
-claude-config/skills/turnstile-spin/
-claude-config/skills/workers-best-practices/
-claude-config/skills/wrangler/
