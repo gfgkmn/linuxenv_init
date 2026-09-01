@@ -43,6 +43,7 @@
       "Bash(tmux capture-pane:*)",
       "Bash(~/.claude/scripts/tmux-exec.sh:*)",
       "Bash(~/.claude/scripts/tmux-capture.sh:*)",
+      "Bash(~/.claude/scripts/cc-shot.sh:*)",
       "Bash(python ~/.claude/scripts/preset_switch.py:*)",
       "Bash(~/Applications/bin/cc-bridge-toggle-globally)",
       "Bash(~/Applications/bin/cc-bridge-toggle-globally *)",
@@ -56,7 +57,6 @@
       "Read(**/*.pem)"
     ]
   },
-  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -74,6 +74,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/enforce-tmux.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/enforce-shot.sh"
           }
         ]
       },

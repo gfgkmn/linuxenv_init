@@ -1,0 +1,13 @@
+# cc-shot allowlist — the ONLY windows Claude Code may capture.
+#
+# One process name per line. Must match the macOS process name exactly
+# (see: osascript -e 'tell application "System Events" to get name of every process whose background only is false')
+#
+# Lines starting with # and blank lines are ignored.
+# Edit this file to grant or revoke capture permission. cc-shot.sh refuses
+# any target not listed here, and enforce-shot.sh blocks raw screencapture,
+# so this file is the single authorization surface.
+
+Chronovigil
+Simulator
+Xcode
