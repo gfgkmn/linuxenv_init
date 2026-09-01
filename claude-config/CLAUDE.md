@@ -12,13 +12,37 @@ When a task completes, echo `gfgkmn, my job is done` to alert the user.
 - Before writing ANY code: output a numbered plan with a `verify:` clause per step (how you'll know that step worked — shape check, loss curve, test pass, grep output, etc.), then ask "Shall I proceed?" Do NOT write code until the user confirms.
 - Before modifying ANY existing working code: (1) read the source, (2) explain to the user WHY the current code works, (3) propose changes, (4) wait for user approval. NEVER edit working code you have not researched.
 - If the user rejects an edit (audit hook rejection): STOP immediately. Ask the user what was wrong. Do NOT attempt a variation.
+- Before publishing anything the user will see live — a website, a release build, a shared link — serve it locally and show them first. Publishing is not a verification step; it is what happens after one.
 
 ## Ambiguity Discipline
 
 - If a request has multiple reasonable interpretations, present them — do NOT pick silently and run.
 - State non-obvious assumptions before implementing. If uncertain, ask rather than guess.
 - If a simpler approach than what the user asked for exists, say so before implementing. Push back when warranted — silent compliance with a worse plan is a failure mode.
+- When asking a multi-option question, put the deciding evidence INSIDE the question text — the finding that rules options in or out, not just the options themselves. The user often sees only the rendered prompt, never the prose above it. A question that can't be answered without scrolling back is under-specified.
 - Match the existing style of the surrounding file (section depth, bullet-vs-prose, terse-vs-explanatory) even if you'd write it differently.
+
+## Visual Decisions — Show Variants, Don't Guess
+
+Applies when the request is about how something LOOKS or FEELS — layout, spacing, density, interaction flow, visual hierarchy. Not for pure logic.
+
+- The user cannot specify these in advance but recognizes the right one on sight. So do NOT implement one interpretation and ask "is this right?" — that yields one sample per round trip.
+- Build 3 genuinely different treatments instead. Different means different organizing idea, not the same layout in three accent colors.
+- Use the `design` skill: multiple artboards on one canvas, published as an Artifact. Reviewable on a phone; no hand-written comparison page.
+- After the user picks, ask WHY that one — then record the answer. That sentence is the requirement they could not state up front, and it is worth more than the chosen variant.
+- Skip variants when the user has already specified the visual direction, or when the change is mechanical (a copy fix, a known-correct alignment).
+
+## Design Stances
+
+Standing concerns for UI work — what to attend to, NOT what to conclude. Specific verdicts ("this label belongs above its field") are answers to one screen; they expire when the screen changes and do not belong here.
+
+- Keyboard first. Every flow must be completable without the mouse, including state switches that would otherwise need a click. When a modal or popover opens, focus lands somewhere the keyboard can act on immediately — check this, don't assume it.
+- Shortcuts scale by mode, not by modifier. More chords exhaust the memorable combinations and collide with OS defaults; a mode plus a plain key multiplies the space instead. But modes only pay off on surfaces used daily, with a visible mode indicator and real undo — elsewhere the tracking cost is continuous and a mode error costs more than the keystrokes saved. Modal editing is this user's preference, not a convention shipped users share: on anything user-facing, the convention stance below wins unless the user says otherwise.
+- Follow convention unless there is a reason not to. An experienced user should be able to guess how the app works from how comparable apps work. A capability they would expect to be permanent (revoke, reset, undo) is not a temporary affordance.
+- One visual language across the whole app. Roundness, sharpness, palette, button treatment — pick one and hold it across every tab. Two panels doing the same kind of job must not look like they came from different apps.
+- Judge from the user's side, not the builder's. Ask what a real session looks like — especially the first one, with no data yet. An empty screen with no next step is a defect, not a neutral starting state.
+
+If this section grows past a handful of entries, it has started collecting overfitted specifics — prune it rather than extend it.
 
 ## Tmux Requirement
 
