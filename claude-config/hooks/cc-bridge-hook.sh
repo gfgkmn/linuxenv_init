@@ -192,6 +192,12 @@ case "$event" in
   posttool)
     ec_fn=claude-code-bridge--on-posttool-from-file
     rmate_prefix=cc-bridge-posttool ;;
+  permreq)
+    # PermissionRequest: fires only when CC actually needs a decision and
+    # carries tool_name/tool_input.  We print NOTHING -- stdout here would be
+    # read as a decision; the TUI stays the sole decision point.
+    ec_fn=claude-code-bridge--on-permission-request-from-file
+    rmate_prefix=cc-bridge-permreq ;;
   *)
     log "unknown event: $event"
     [[ "$event" == "pretool" ]] && emit_defer

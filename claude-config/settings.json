@@ -57,6 +57,7 @@
       "Read(**/*.pem)"
     ]
   },
+  "model": "claude-fable-5-1[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -140,6 +141,17 @@
           }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh permreq"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -161,15 +173,14 @@
     }
   },
   "spinnerTipsEnabled": false,
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "xhigh"
+    }
+  },
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
   "editorMode": "vim",
-  "agentPushNotifEnabled": true,
-  "modelSettings": {
-    "claude-opus-5": {
-      "effortLevel": "medium"
-    }
-  },
-  "model": "opus[1m]"
+  "agentPushNotifEnabled": true
 }
