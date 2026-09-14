@@ -152,6 +152,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/english-daily.sh",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
