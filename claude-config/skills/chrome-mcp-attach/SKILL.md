@@ -1,91 +1,136 @@
 ---
 name: chrome-mcp-attach
-description: Make chrome-devtools MCP attach to the user's already-running Chrome (real profile, real tabs, real logins) instead of spawning a sandboxed automation Chrome. Use when the user asks to attach chrome MCP to their existing browser, or you observe symptoms — `list_pages` returns only `about:blank`, `Network.enable timed out`, or `ps` shows a Chrome with `--user-data-dir=...cache/chrome-devtools-mcp/chrome-profile`. Recovery procedure — must be re-run after every plugin update.
+description: Connect chrome-devtools MCP to the user's real Chrome (real profile, tabs, logins). Use whenever a chrome-devtools tool fails — "Could not find DevToolsActivePort", "Could not connect to Chrome", "Network.enable timed out", list_pages hanging or returning only about:blank — or when the user asks to attach/fix/reconnect Chrome MCP. Run the doctor script FIRST; never hand-diagnose.
 allowed-tools: Bash, Read, Edit, Write
 ---
 
-# Chrome MCP — Attach to Existing Chrome (Recovery Procedure)
-
-## What is broken (the recurring root cause)
-
-The user's installed plugin `chrome-devtools-mcp@claude-plugins-official` ships an `.mcp.json` that does **not** pass `--autoConnect`, so the MCP defaults to spawning a sandboxed Chrome. The user's `~/.claude.json` has the correct config, but the plugin's namespaced version (`plugin:chrome-devtools-mcp:chrome-devtools`) takes precedence after `/mcp` reconnect, shadowing it.
-
-The patch must be re-applied after every plugin auto-update because the cache directory is rewritten on update. **Do not propose moving the user to `--browser-url` + a fresh `--user-data-dir`** — they explicitly need their real profile (cookies, logins, existing tabs).
-
-## Procedure
-
-Run these steps in order. Stop on first failure and report.
-
-### Step 1 — Verify the user has set up Chrome
+# Chrome MCP — standard operating procedure
 
 ```bash
-lsof -iTCP:9222 -sTCP:LISTEN -P 2>/dev/null
+~/.claude/skills/chrome-mcp-attach/scripts/chrome-mcp-doctor.sh
 ```
 
-If empty: tell the user to (a) make sure their Chrome is running, (b) navigate to `chrome://inspect/#remote-debugging` and accept the dialog. Do not proceed until 9222 is listening.
+Run it. Act on the exit code. Do not improvise, and do not retry a failing
+tool call "to see if it works now" — every connection attempt costs the user a
+Chrome permission click.
 
-### Step 2 — Find the installed plugin's `.mcp.json` (version-agnostic)
+| Exit | Meaning | Your action |
+|------|---------|-------------|
+| `0`  | Ready | Call `list_pages`. Tell the user: **Chrome will show an "Allow remote debugging?" sheet — click Allow.** If they can't see it, re-run the doctor: it raises the window that holds it. |
+| `20` | Config patched | Ask for `/reload-plugins`, then as exit 0. |
+| `11` | Full Disk Access missing | Relay the grant instructions. Stop; nothing else can work. |
+| `12` | Debug server off / stale | User toggles `chrome://inspect/#remote-debugging` (off→on if stale). Re-run. |
+| `14` | Duplicate registrations | Re-run with `--fix-registrations` (backup of `~/.claude.json` kept). |
+| `15` | **Chrome is waiting for Allow** | The doctor raised the window holding the sheet and named it. User clicks Allow. Re-run. |
+| `30` | Plugin not installed | Report and stop. |
 
-```bash
-python -c "import json; d=json.load(open('/Users/gfgkmn/.claude/plugins/installed_plugins.json')); p=d['plugins']['chrome-devtools-mcp@claude-plugins-official'][0]['installPath']; print(p+'/.mcp.json')"
-```
+**Patience rule.** After Allow is clicked, the MCP attaches to every tab
+before answering. With 50+ tabs the FIRST `list_pages` takes **1–2 minutes**
+and gets moved to the background by the harness — that is normal and it is
+working. Do NOT stop it, kill the MCP, or call again: every new connection
+costs the user another Allow sheet. Wait for the task notification.
+(Validated 2026-09-16: 54 tabs, ~2 min, then all tabs listed.)
 
-Read the printed path. If it does not exist, plugin is not installed — the user must use the `~/.claude.json` config; tell them and stop.
+Connected tool namespace: `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*`.
+Visible success: Chrome's **"Chrome is being controlled by automated test
+software"** banner.
 
-### Step 3 — Check whether `--autoConnect` is present
+## The one unavoidable human step
 
-Read the file. The args array under `mcpServers.chrome-devtools.args` should contain `"--autoConnect"`. Two known shapes have appeared in the wild:
+Chrome 144+ asks permission **per connection**: *"every time the Chrome
+DevTools MCP server requests a remote debugging session, Chrome will show a
+dialog to the user and ask for their permission"* (Chrome DevTools blog). The
+dialog is a **sheet** titled **"Allow remote debugging?"**, attached to **one**
+Chrome window — often not the frontmost — which is why it goes unnoticed and
+every client "times out". Its buttons: *Turn off in settings · Cancel · Allow*.
 
-- 0.22.0 shape:
-  ```json
-  { "mcpServers": { "chrome-devtools": { "command": "npx", "args": ["chrome-devtools-mcp@latest"] } } }
-  ```
-- 0.23.0+ shape (no `mcpServers` wrapper):
-  ```json
-  { "chrome-devtools": { "command": "npx", "args": ["-y", "chrome-devtools-mcp@latest", "--autoConnect"] } }
-  ```
+It cannot be automated, and this was tested, not assumed:
+- AX `click` and `perform action "AXPress"` on the Allow button are ignored.
+- Synthesizing a real input event to approve a security prompt is a bypass;
+  the Claude Code harness refuses it. Do not try again.
 
-If `--autoConnect` is already in the args array — patch is unnecessary; skip to Step 5.
+So the SOP makes the click trivial instead: the doctor names the window and
+raises it to the front. One click per new MCP connection. That is the cost of
+controlling a real profile, and it is Chrome's design, not a bug.
 
-### Step 4 — Patch the file (Edit, append `"--autoConnect"` to args)
+## The verified model (every line tested or read in primary docs, 2026-09-16)
 
-Use the Edit tool. Append `"--autoConnect"` as the last element in the args array. Preserve the surrounding shape (do **not** convert between the two shapes; keep what was there).
+**Reaching the real profile — the only way.** `chrome://inspect/#remote-debugging`
+enables a debug server *at runtime* (Chrome 144+). It writes
+`~/Library/Application Support/Google/Chrome/DevToolsActivePort` (line 1 port,
+line 2 browser WebSocket path). `--autoConnect` reads it and dials the
+WebSocket. **No `--remote-debugging-port` relaunch is needed or wanted.**
 
-After Edit, re-read to confirm the new args array.
+**TCC.** The port file is in a protected directory. Without Full Disk Access on
+the *host app* (Emacs.app here) the read fails and the MCP reports **"Could not
+find DevToolsActivePort"** — the file is there; it is *unreadable*. Granting FDA
+to Emacs and restarting it fixed every process beneath it, including shells
+under a launchd-parented tmux server. Probe; don't theorize.
 
-### Step 5 — Kill all chrome-devtools-mcp processes
+**One registration.** `~/.claude.json` (root or per-project) *and* the plugin
+both defining `chrome-devtools` spawns two servers → two Allow sheets, two
+attach loops, "zombie" processes (maintainer: zombies mean *the server was not
+stopped by the client*). The plugin is the sole provider; the doctor enforces it.
 
-```bash
-pkill -f "chrome-devtools-mcp"; sleep 1
-ps aux | grep chrome-devtools-mcp | grep -v grep | wc -l
-```
+**Config resets on plugin update** (1.7→1.8→1.9 in five weeks) and the file
+moved from `.mcp.json` to `.claude-plugin/plugin.json`. The doctor resolves the
+path from `installed_plugins.json` and re-applies `--autoConnect` each run.
 
-The count should be 0. If non-zero, retry the pkill once.
+## Instruments that lie (never use as health checks)
 
-### Step 6 — Tell the user to **`/reload-plugins`** (NOT `/mcp` reconnect)
+| Instrument | Why it lies |
+|---|---|
+| `lsof … 9222 LISTEN` | `chrome://inspect` **port-forwarding** also listens there and answers 404. |
+| `curl /json/version` | Runtime debug mode serves **no /json HTTP API** — 404 on a healthy Chrome 152. |
+| "Could not find DevToolsActivePort" | Means *cannot read* (TCC), not *missing*. |
+| "Network.enable timed out" | Means *init window expired* — almost always the unanswered Allow sheet. |
+| Tab count | Frozen-tab hangs (#1230) were fixed in **Chrome 149**. 58 tabs was a red herring; splitting them across windows proved it. |
 
-This is the most important step and the one I keep getting wrong. After editing the plugin's `.mcp.json`:
+The only truthful probes: reading the port file, opening a raw WebSocket to
+the browser endpoint, and asking Accessibility whether the Allow sheet is up.
+The doctor uses exactly those.
 
-- `/mcp` → Reconnect **does NOT pick up the file change**. It reattaches the session to the MCP, but the plugin loader caches the config — the new `--autoConnect` arg won't appear in the spawned process. You'll see the bug recur and falsely conclude the patch didn't work.
-- **`/reload-plugins`** is what actually re-reads the plugin config from disk and respawns the MCP with the new args. Tell the user to run this.
+## Wrong turns already taken (do not repeat)
 
-After `/reload-plugins`, the user may also need `/mcp` to reattach the session (one extra dialog dismissal), but the config reload is the load-bearing step.
-
-### Step 7 — Verify after reconnect
-
-After the user confirms reconnect, call `list_pages`. Expected: their actual tabs (multiple, real URLs). Failure modes:
-
-- Single `about:blank` only → the patch didn't take effect. Check the running process args with `ps -wwo command -p <pid>` and confirm `--autoConnect` is on the cmdline. If not, the patched file isn't the one being used — re-check Step 2's path.
-- `Network.enable timed out` → either still zombies (re-run Step 5) or a frozen background tab in user's Chrome (issue #1230). Tell the user to focus a non-frozen tab.
-
-## Why each step exists (don't shortcut)
-
-- **Step 2 is version-agnostic** because the plugin path includes the version (e.g. `0.22.0`) which drifts over time. Hardcoding the version is what made the previous fix break silently after auto-update.
-- **Step 5 (pkill) is necessary** because issue #1763 (lock-file PR #1841 still unmerged as of 2026-04-28) means stale MCPs from prior Claude Code sessions race against the new one and trigger `Network.enable` timeout even after the patch.
-- **Step 6 is the most-omitted step** historically. Without it, the patch is invisible to the running session.
+- `--browserUrl`: needs the /json API (404) **and** a non-default
+  user-data-dir (docs) — can never reach the real profile.
+- Quit-and-relaunch Chrome with a flag: unnecessary since Chrome 144; wrong.
+- `--categoryNetwork=false` to dodge `Network.enable`: no effect (verified).
+- Blaming tab count: red herring.
+- Auto-clicking Allow (AX or synthetic input): ignored / refused. Stop.
+- Patching config then only `/mcp` reconnect: the loader caches config;
+  `/reload-plugins` is the load-bearing step.
 
 ## Non-goals
 
-- Do not edit `~/.claude.json`. Its `chrome-devtools` entry is already correct; the issue is the plugin shadowing it.
-- Do not propose `--browser-url=http://127.0.0.1:9222` with a manually launched debug Chrome. That uses a fresh `--user-data-dir`, which loses the user's profile — they have rejected this twice.
-- Do not propose uninstalling the plugin without telling the user the tradeoff: they would lose the plugin's companion skills (`chrome-devtools-mcp:memory-leak-debugging`, `:a11y-debugging`, `:debug-optimize-lcp`, `:troubleshooting`, `:chrome-devtools`, `:chrome-devtools-cli`).
+- Never quit/relaunch the user's Chrome. Never use `--isolated` or a fresh
+  `--user-data-dir`.
+- Never edit `~/.claude.json` without the user's explicit yes; the doctor only
+  does it under `--fix-registrations`, with a backup.
+- Never attempt to approve the Allow sheet programmatically.
+
+## Typing into pages on THIS Chrome: never use `fill` / `type_text`
+
+The user runs the **Surfingkeys** extension (vim-style keyboard control). The
+MCP's `fill` and `type_text` tools emit real keystrokes, which Surfingkeys
+intercepts as commands — typing an email address navigated the tab to Account
+home mid-form (2026-09-16, Cloudflare dashboard) and the form was never
+submitted. Its hint overlay ("Hints to click… A S D F G") in a snapshot is the
+tell.
+
+Enter text with `evaluate_script` instead: set the value through the native
+setter and dispatch `input`/`change`, then click the button from the script.
+No keystrokes → nothing for Surfingkeys to grab. This also satisfies React-
+controlled inputs (Paddle, Cloudflare, App Store Connect).
+
+```js
+const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+set.call(input, value);
+input.dispatchEvent(new Event('input',{bubbles:true}));
+input.dispatchEvent(new Event('change',{bubbles:true}));
+```
+
+## When to re-run
+
+After any plugin update, any Chrome restart (the debug server does not
+persist), or whenever a chrome-devtools tool fails. The doctor is idempotent.
