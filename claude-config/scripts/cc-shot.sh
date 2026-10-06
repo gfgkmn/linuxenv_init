@@ -99,7 +99,9 @@ PYEOF
       exit 1
     }
 
-    # Resolve the real CGWindowID owned by the allowlisted process. Capturing
+    # Resolve the real CGWindowID owned by the allowlisted process. Env
+    # CC_SHOT_PID / CC_SHOT_TITLE narrow the choice among that process
+    # windows (see the Python block). Capturing
     # by window id (rather than by screen rectangle) means we get that window's
     # own content: an overlapping window, a notification banner, or anything
     # else on top of it is never included.
@@ -107,13 +109,28 @@ PYEOF
     # or sitting on another Space still has a capturable id, and the away-from-
     # desk case is exactly when that happens. Prints "<id> <onscreen>".
     read -r wid onscreen <<< "$("$PYTHON" - "$app" <<'PYEOF' 2>/dev/null || true
-import sys
+import sys, os
 from Quartz import (CGWindowListCopyWindowInfo, kCGWindowListOptionAll,
                     kCGNullWindowID)
 want = sys.argv[1]
+# Optional narrowing among the windows of the allowed process (2026-10-06): when
+# two instances of the same app run (the one the user runs and a freshly built one),
+# CC_SHOT_PID picks the instance and CC_SHOT_TITLE (substring) the window.
+# Neither can reach a process the allowlist does not name.
+want_pid = int(os.environ["CC_SHOT_PID"]) if os.environ.get("CC_SHOT_PID") else None
+want_title = os.environ.get("CC_SHOT_TITLE") or None
+# CC_SHOT_WID: one exact window number (for untitled sheets); still only
+# honoured when that window belongs to the allowed process.
+want_wid = int(os.environ["CC_SHOT_WID"]) if os.environ.get("CC_SHOT_WID") else None
 best = None
 for w in CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID) or []:
     if w.get("kCGWindowOwnerName") != want:
+        continue
+    if want_pid is not None and int(w.get("kCGWindowOwnerPID", 0)) != want_pid:
+        continue
+    if want_title is not None and want_title not in (w.get("kCGWindowName") or ""):
+        continue
+    if want_wid is not None and int(w.get("kCGWindowNumber", 0)) != want_wid:
         continue
     if w.get("kCGWindowLayer", 0) != 0:      # skip menubar items, overlays
         continue
