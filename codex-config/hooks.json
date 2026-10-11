@@ -1,0 +1,125 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SessionStart",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' UserPromptSubmit",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PreToolUse",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PermissionRequest",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PostToolUse",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PreCompact",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PostCompact",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SubagentStart",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SubagentStop",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' Stop",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SessionEnd",
+            "timeoutSec": 5
+          }
+        ]
+      }
+    ]
+  }
+}
