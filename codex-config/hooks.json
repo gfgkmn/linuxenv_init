@@ -18,6 +18,11 @@
             "type": "command",
             "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' UserPromptSubmit",
             "timeoutSec": 5
+          },
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' prompt-submit",
+            "timeoutSec": 8
           }
         ]
       }
@@ -29,6 +34,11 @@
             "type": "command",
             "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PreToolUse",
             "timeoutSec": 5
+          },
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' pretool",
+            "timeoutSec": 8
           }
         ]
       }
@@ -40,6 +50,11 @@
             "type": "command",
             "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PermissionRequest",
             "timeoutSec": 5
+          },
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' permission-request",
+            "timeoutSec": 8
           }
         ]
       }
@@ -51,6 +66,11 @@
             "type": "command",
             "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PostToolUse",
             "timeoutSec": 5
+          },
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' posttool",
+            "timeoutSec": 8
           }
         ]
       }
@@ -106,6 +126,11 @@
             "type": "command",
             "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' Stop",
             "timeoutSec": 5
+          },
+          {
+            "type": "command",
+            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' stop",
+            "timeoutSec": 8
           }
         ]
       }
