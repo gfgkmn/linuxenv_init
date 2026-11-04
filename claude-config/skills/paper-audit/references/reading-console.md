@@ -48,9 +48,11 @@ emacsclient -e '(chat-console-render-file "r-12" "assistant" "/path/to/block.md"
 
 - **Ids**: `r-1`, `r-2`, … in order. Reusing an id replaces that block —
   useful for correcting a block, wrong for appending.
-- **Echo the user's question first** as a `"user"` block whenever it arrived
-  through the terminal or console input, so the transcript is complete without
-  the page having seen it.
+- **Echo the user's question first** as a `"user"` block when it arrived
+  through the terminal, so the transcript is complete without the page having
+  seen it. Questions typed in the console (prefixed `[Console]`, or arriving
+  while the console is routed here) are already echoed by Emacs the moment
+  they are sent — do not push a second copy.
 - **PREDICT questions are blocks too**: push the setup and the question,
   render `**PREDICT**` at the top, then wait. Do not reveal the result in the
   same block.

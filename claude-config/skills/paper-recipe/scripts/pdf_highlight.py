@@ -19,6 +19,9 @@ def word_boxes(pdf_path):
         ["pdftotext", "-bbox", pdf_path, "-"],
         capture_output=True, text=True, check=True,
     ).stdout
+    # Some PDFs carry control characters in their text layer, which pdftotext
+    # copies into the XML verbatim and the parser rejects as invalid tokens.
+    xml = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", xml)
     root = ElementTree.fromstring(xml)
     pages = {}
     for i, page in enumerate(root.iter("{http://www.w3.org/1999/xhtml}page"), start=1):
