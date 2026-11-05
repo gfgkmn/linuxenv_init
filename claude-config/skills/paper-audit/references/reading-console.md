@@ -1,10 +1,10 @@
 # Reading through the console
 
-Stage-1 operating procedure for the agent (a Claude Code session, or any
-interactive agent in a tmux pane). The terminal is the control channel; the
-console window renders everything worth reading. The reason is blunt: the
-terminal cannot render mathematics, and a reading session is mostly
-mathematics.
+Operating procedure for the agent (a Claude Code session, or any interactive
+agent in a tmux pane) for the whole paper session, not only stage 1. The
+terminal is the control channel; the console window renders everything worth
+reading. The reason is blunt: the terminal cannot render mathematics, and a
+reading session is mostly mathematics.
 
 ## Setup, on `/paper-audit <pdf-or-dir>`
 
@@ -31,12 +31,26 @@ mathematics.
 
 ## Channel discipline
 
-**Console** gets everything substantive: background surveys, explanations,
-derivations, PREDICT questions, figures, comparison tables. **Terminal** keeps
-only status lines ("pushed §3 background", tool activity) and short
-confirmations. If a reply is worth more than two sentences, it is console
-material. Never paste walls of paper text into either channel — quote the
-minimum and cite the page.
+The channel is decided by **what the content is about**, never by where the
+question came from or how long the answer is. A question typed in the terminal
+about the paper's subject is still console material.
+
+| Content | Channel |
+|---|---|
+| The paper or its subject: explanations, derivations, research and literature summaries, comparison tables, figures, formulas, PREDICT questions, candidate changes to the note | **Console** |
+| Tooling and the session itself: config, git, scripts, setup, "is it done", how the workflow works | **Terminal** |
+
+When content goes to the console, the terminal gets one status line naming the
+block ("pushed r-4"). Never paste walls of paper text into either channel —
+quote the minimum and cite the page.
+
+## Routing, and when the agent is absent
+
+While this session runs, every question from the console page, from `SPC r i`
+in a note, and from the Obsidian ask hotkey reaches this agent. Emacs checks
+before each question that the routed tmux pane still runs the agent; if not,
+it falls back to the note backend (agy), which needs no agent session. The
+page's header names the current answerer.
 
 ## Pushing content
 
@@ -96,7 +110,7 @@ referent of "this"; answer as a normal turn (echo block, answer block).
 
 ## Ending a session
 
-When the user says they are done (or asks to export):
+When the user says the paper is done (or asks to export):
 
 ```
 emacsclient -e '(chat-console-export "<paper-dir>")'
@@ -108,9 +122,10 @@ referenced figure — self-contained, safe to move. Tell the user the path.
 The conversation itself stays resumable across days via `claude --resume`;
 mention that when a session ends mid-paper.
 
-## What this mode is not
+## What the console is not
 
-No note is written here. The output of stage 1 is the user's understanding;
-the export is reference material, not a draft. Do not offer to turn the
+The console never writes the note. Changes reach the note only as candidate
+fences the user takes through the diff. The output of reading is the user's
+understanding; the export is reference material, not a draft. Do not offer to turn the
 transcript into a note — that is exactly the failure the prose contract in
 `SKILL.md` exists to prevent.

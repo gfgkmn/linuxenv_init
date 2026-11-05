@@ -24,7 +24,15 @@ order is inverted: understanding comes first and belongs to the user, and the
 model supplies only what is mechanical — the part that is genuinely tedious and
 genuinely delegable.
 
-## The three stages
+## The three activities
+
+They are listed in the order they first happen, but they are not phases that
+close behind each other. Understanding is not finished when a draft exists: a
+user who believed they had the paper will dictate a draft, then find a large
+point they never understood. One session per paper therefore spans all three,
+from `/paper-audit` until the user says the paper is done, and any activity may
+follow any other. There is no mode to switch; the kind of question decides what
+happens (see "Understanding that arrives late" below).
 
 ### 1. Read together
 
@@ -46,7 +54,7 @@ The dialogue renders in the chat console, not the terminal — the terminal
 cannot display mathematics and a reading session is mostly mathematics. Setup,
 channel discipline, figure handling and export: `references/reading-console.md`.
 
-Stage 1 ends when the user says they are ready to write. Do not push toward it.
+The user starts writing when they say they are ready. Do not push toward it.
 The session transcript is exportable at any point; offer the export when the
 session winds down, and remind the user the conversation itself resumes with
 `claude --resume` if the paper spans days.
@@ -66,6 +74,27 @@ prose. See `references/augment.md`.
 
 **Audit** — report what is wrong, imprecise, or missing, as a list delivered
 separately from the note. See `references/audit-checklist.md`.
+
+### Understanding that arrives late
+
+When a draft or a finished note exists and the user asks a question about the
+paper's substance, it is reading again, not a disruption of the audit. Answer
+it as stage 1 — dialogue in the console, the same rules — and then close the
+loop with the note: end the answer with one line on whether it changes
+anything the note says.
+
+- **It does**: name the sentence, and offer the change as a candidate in a
+  ```` ```replace ```` fence, following whatever correction convention the note
+  already uses. The user takes it or not through the diff; the prose contract
+  still holds, so the candidate corrects their sentence rather than replacing
+  their paragraph.
+- **It does not**: say so in that one line. Silence would leave the user
+  wondering whether the note is now wrong.
+
+Questions that arrive from the note itself come prefixed `[Note]` with the file
+path, section and selection; read the file for context. A request about wording
+alone ("make this sentence read better") is answered the same way, with a
+candidate fence and nothing else.
 
 ## The prose contract
 
