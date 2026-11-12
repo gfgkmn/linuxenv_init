@@ -100,12 +100,24 @@ case "$audit_mode" in
     *)          audit_badge="\033[1;32m[permissive]\033[0m" ;;
 esac
 
+# ── Emacs bridge badge: does this session's reply reach Emacs? ─────────
+# Read from the same files cc-bridge-hook.sh checks, so the badge says
+# what the hook will do: the global kill-switch, then the per-session
+# list (`/cc-bridge-toggle', `M-x claude-code-bridge-toggle-session-hooks').
+bridge_badge="\033[1;32m[emacs]\033[0m"
+if [ -e "$HOME/.claude/cc-bridge-disabled-globally" ]; then
+    bridge_badge="\033[2m[emacs:off(all)]\033[0m"
+elif [ -n "$session_id" ] && [ -r "$HOME/.claude/cc-bridge-disabled-uuids" ] \
+     && grep -Fxq "$session_id" "$HOME/.claude/cc-bridge-disabled-uuids" 2>/dev/null; then
+    bridge_badge="\033[2m[emacs:off]\033[0m"
+fi
+
 # ── Render two lines ────────────────────────────────────────────────────
 printf "\033[1;34m[claude]:\033[0m \033[1;32m%s\033[0m %b\033[1;36m%s\t\033[1;35m%s %s\033[0m\n" \
     "$git_info" "$conda_info" "$cwd" "$current_date" "$current_time"
 
-printf "  💰\$%.4f \033[1;${ctx_color}mctx:%d%%\033[0m %b %b \033[2m%s\033[0m \033[1;34m❯\033[0m" \
-    "$cost" "$ctx_pct" "$ctx_bar" "$audit_badge" "$model_name"
+printf "  💰\$%.4f \033[1;${ctx_color}mctx:%d%%\033[0m %b %b %b \033[2m%s\033[0m \033[1;34m❯\033[0m" \
+    "$cost" "$ctx_pct" "$ctx_bar" "$audit_badge" "$bridge_badge" "$model_name"
 
 # ── State export for claude-code-bridge dashboard ───────────────────────
 # Writes ~/.claude/cc-state/<session_id>.json on every tick. Per-UUID files
