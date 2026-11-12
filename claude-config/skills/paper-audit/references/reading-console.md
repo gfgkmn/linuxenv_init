@@ -64,9 +64,9 @@ emacsclient -e '(chat-console-render-file "r-12" "assistant" "/path/to/block.md"
   useful for correcting a block, wrong for appending.
 - **Echo the user's question first** as a `"user"` block when it arrived
   through the terminal, so the transcript is complete without the page having
-  seen it. Questions typed in the console (prefixed `[Console]`, or arriving
-  while the console is routed here) are already echoed by Emacs the moment
-  they are sent — do not push a second copy.
+  seen it. Questions from the console arrive prefixed `[Console]` (or
+  `[Note]`, from a note) and are already echoed by Emacs the moment they are
+  sent — do not push a second copy. No prefix means the terminal.
 - **PREDICT questions are blocks too**: push the setup and the question,
   render `**PREDICT**` at the top, then wait. Do not reveal the result in the
   same block.
@@ -105,8 +105,9 @@ when a quick look is enough and nothing needs pushing.
 ## Questions coming back
 
 Questions the user asks in the console arrive in your prompt prefixed
-`[Console]`, with the selected excerpt quoted. Treat the excerpt as the
-referent of "this"; answer as a normal turn (echo block, answer block).
+`[Console]`, with the selected excerpt quoted when there is one. Treat the
+excerpt as the referent of "this"; push only the answer block, since Emacs has
+already echoed the question.
 
 ## Ending a session
 
