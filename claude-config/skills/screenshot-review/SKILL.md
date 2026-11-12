@@ -61,6 +61,28 @@ identifier and calls `XCUIScreen.main.screenshot()` at each stop; screenshots
 come out of the `.xcresult` via `xcrun xcresulttool`. Without such a target,
 say plainly that only the launch screen is reachable — do not fake a tour.
 
+## Which simulator
+
+Keep one simulator per device family, each at an App Store Connect screenshot
+size. Today that is:
+
+| Family | Simulator |
+|---|---|
+| iPhone | iPhone 18 Pro Max |
+| iPad | iPad Pro 13-inch (M5) |
+| Watch | Apple Watch Ultra 4 (49mm) |
+
+- Take the UDID from `xcrun simctl list devices available`; never pick by guess.
+- Never `simctl create` or `clone` a simulator. Every session that made its own
+  left one behind, and they cost gigabytes each.
+- If the family's simulator is missing, or a different size is needed, ask the
+  user first.
+- `xcrun simctl shutdown <UDID>` when the capture is done. A booted simulator is
+  protected from the user's cleanup script.
+
+When Xcode ships newer models, the user's cleanup keeps the newest of the same
+size; follow what `simctl list` shows rather than this table.
+
 ## iOS capture loop
 
     xcrun simctl boot <UDID>; xcrun simctl bootstatus <UDID> -b

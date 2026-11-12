@@ -73,7 +73,7 @@ mid-transition frame gets captured and the gallery shows a half-drawn screen.
 ```bash
 xcodebuild test \
   -project X.xcodeproj -scheme S \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -destination 'platform=iOS Simulator,id=<UDID>' \
   -resultBundlePath /tmp/tour.xcresult
 
 xcrun xcresulttool export attachments \
