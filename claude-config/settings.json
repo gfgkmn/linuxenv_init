@@ -142,6 +142,16 @@
         ]
       }
     ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop-failure"
+          }
+        ]
+      }
+    ],
     "PermissionRequest": [
       {
         "matcher": ".*",

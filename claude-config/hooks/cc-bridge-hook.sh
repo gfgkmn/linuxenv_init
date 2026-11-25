@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # cc-bridge-hook.sh — unified Claude Code hook dispatcher for the bridge.
 #
-# Events: stop | prompt-submit | notify | pretool | posttool
+# Events: stop | stop-failure | prompt-submit | notify | pretool | posttool
 #
 # All events are fire-and-forget except `pretool', which still emits a
 # JSON `defer' to stdout so CC's TUI handles the actual permission
@@ -180,6 +180,12 @@ case "$event" in
   stop)
     ec_fn=claude-code-bridge--on-stop-from-file
     rmate_prefix=cc-bridge-stop ;;
+  stop-failure)
+    # StopFailure: fires INSTEAD of Stop when an API error (lost
+    # connection, rate limit, auth) ended the turn.  Without it Emacs
+    # never learns the turn is over.
+    ec_fn=claude-code-bridge--on-stop-failure-from-file
+    rmate_prefix=cc-bridge-stopfail ;;
   prompt-submit)
     ec_fn=claude-code-bridge--on-prompt-submit-from-file
     rmate_prefix=cc-bridge-start ;;
