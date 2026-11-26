@@ -28,7 +28,8 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { execFile } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -108,10 +109,11 @@ function deliver(event: string, ctx: any, extra: Record<string, unknown> = {}) {
       cwd: ctx.cwd,
       ...extra,
     };
-    const dir = mkdtempSync(join(tmpdir(), "cc-bridge-pi-"));
-    const file = join(dir, "payload.json");
+    // One file, which Emacs deletes when it has read it.  A directory
+    // of its own would stay behind, empty, for every event.
+    const file = join(tmpdir(), `cc-bridge-pi-payload.${randomUUID()}.json`);
     const json = JSON.stringify(payload);
-    writeFileSync(file, json);
+    writeFileSync(file, json, { mode: 0o600, flag: "wx" });
     log(event, "fired: " + json.slice(0, 200));
     const fn = FUNCTIONS[event];
     const form =
@@ -120,7 +122,7 @@ function deliver(event: string, ctx: any, extra: Record<string, unknown> = {}) {
     execFile("emacsclient", ["--no-wait", "--eval", form], { timeout: 3000 }, (err) => {
       if (err) {
         log(event, "emacsclient call failed: " + String(err.message).slice(0, 120));
-        try { rmSync(dir, { recursive: true, force: true }); } catch {}
+        try { rmSync(file, { force: true }); } catch {}
       }
     });
   } catch (err) {
