@@ -14,6 +14,11 @@ Three translations, because Codex and CC agree on skills but not on the rest:
       `tools:` and `model:` have no Codex equivalent and are dropped (noted
       in the generated header so the loss is visible).
   CLAUDE.md + @imports            ->  generated/AGENTS.md
+  hooks.json                      ->  generated/hooks.json
+      `{HOOKS}' in a command becomes this checkout's hooks/ directory.
+      Codex wants an absolute path, and the checkout is under a different
+      home on each machine -- so this one output is per machine and is
+      not committed (see .gitignore).
       Codex reads AGENTS.md and does NOT support CC's `@file` imports, so
       the imports are inlined.
 
@@ -163,6 +168,15 @@ def gen_agents_md():
     return write(os.path.join(OUT, "AGENTS.md"), text), missing
 
 
+def gen_hooks():
+    with open(os.path.join(HERE, "hooks.json"), encoding="utf-8") as fh:
+        text = fh.read()
+    hooks = os.path.join(HERE, "hooks")
+    if "'" in hooks or '"' in hooks or "\\" in hooks:
+        raise SystemExit(f"cannot quote the hooks directory: {hooks}")
+    return write(os.path.join(OUT, "hooks.json"), text.replace("{HOOKS}", hooks))
+
+
 def main():
     print("commands -> skills:")
     for slug, state in gen_command_skills():
@@ -170,6 +184,7 @@ def main():
     print("agents -> toml:")
     for slug, state in gen_agents():
         print(f"  {state:9} {slug}")
+    print(f"hooks.json: {gen_hooks()}")
     state, missing = gen_agents_md()
     print(f"AGENTS.md: {state}")
     if missing:
