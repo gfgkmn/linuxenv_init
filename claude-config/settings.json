@@ -57,7 +57,13 @@
       "Read(**/*.pem)"
     ]
   },
-  "model": "claude-fable-5-1[1m]",
+  "skillOverrides": {
+    "stop-slop": "user-invocable-only",
+    "stop-slop-zh": "user-invocable-only",
+    "paper-recipe": "user-invocable-only",
+    "paper-audit": "user-invocable-only",
+    "hf-cli": "name-only"
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -79,6 +85,15 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/enforce-shot.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/skill-gate.sh"
           }
         ]
       },
@@ -118,6 +133,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/cc-bridge-hook.sh prompt-submit"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/roster-reminder.sh"
           }
         ]
       }
@@ -138,6 +157,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/status-check.sh"
           }
         ]
       }
@@ -163,6 +186,16 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/subagent-rules.sh"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
@@ -183,7 +216,9 @@
     "swift-lsp@claude-plugins-official": true,
     "telegram@claude-plugins-official": true,
     "chrome-devtools-mcp@claude-plugins-official": true,
-    "paddle@claude-community": true
+    "paddle@claude-community": true,
+    "hookify@claude-plugins-official": true,
+    "session-report@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-community": {
@@ -196,12 +231,16 @@
   "spinnerTipsEnabled": false,
   "modelSettings": {
     "claude-opus-5": {
-      "effortLevel": "xhigh"
+      "effortLevel": "high"
+    },
+    "claude-fable-5-2": {
+      "effortLevel": "high"
     }
   },
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
   "editorMode": "vim",
+  "switchModelsOnFlag": true,
   "agentPushNotifEnabled": true
 }
