@@ -11,6 +11,9 @@ The shell differs from a stock one. Check with `type <cmd>` when it matters.
 - `python` is Python 3. Use `python`, not `python3`.
 - macOS (`uname -s` gives `Darwin`): `cat` is `bat`, and `bat` is the real `cat`; `grep` is `ggrep -i`, so it ignores case; `sed` is GNU `gsed`; `rm` moves to the trash; `ll` is `exa -alh -snew`; `tree` is `tree -N`; `locate` is `glocate`; `vim` is MacVim.
 - Linux: GNU tools are native and `grep` still ignores case. `cat` may be `bat` and `rm` may be `trash-put`; check.
+- Two Macs share these files: the MacBook Pro (user `gfgkmn`, ssh host `macbook`) and the Mac mini (user `fhqgqj`, ssh host `macmini`). `scutil --get ComputerName` says which one you are on.
+- A path under the other Mac's home (for example `/Users/gfgkmn/Temp/CleanShot/...` given on the Mac mini) names a file on the other Mac. Do not report it missing: copy it with `scp <host>:'<path>'` to the same place under this home, then read the copy.
+- On macOS, `python` is a link in `/opt/homebrew/bin` made by `stick-python <version>` (3.10 on the MacBook Pro, 3.14 on the Mac mini). `brew upgrade` can remove it, and hooks then fail with `python: command not found` (exit 127). Run the machine's `stick-python` command; do not change hook commands to `python3`.
 
 ## The boundary
 
