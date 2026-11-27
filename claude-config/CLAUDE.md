@@ -3,9 +3,20 @@
 @cooperation.md
 @environment.md
 
-## Task Completion
+## Task Status
 
-When a task completes, echo `gfgkmn, my job is done` to alert the user.
+End every reply that did work or runs long with this block, so the state is readable without reading the reply:
+
+```
+**Status: <done | needs you | running | blocked>**
+- You: <what only the user can do or decide, or "nothing">
+- Running: <background work still going, or "nothing in the background">
+- Not done: <what is unfinished, unverified or limited, or "nothing">
+```
+
+- `done`: nothing is owed. `needs you`: waiting on a decision or an action only the user can take. `running`: background work continues and will report back. `blocked`: stopped by a failure or a limit.
+- One status only. Skip the block for a short direct answer.
+- A stop hook (`hooks/status-check.sh`) sends the reply back once if the block is missing, or if background work is running and the block does not say so.
 
 ## Mandatory Workflow Gates
 
@@ -53,6 +64,7 @@ Tmux has two triggers — know which applies. Full rules in `cooperation.md § T
 Run non-trivial commands (python, node, builds, long bash processes) in tmux so the user can observe.
 Session name: `claude-running-<project>` where `<project>` is the basename of the working directory.
 Always `cd /target/path` as a separate `tmux send-keys` before running commands that need a specific directory.
+If the project uses conda or a venv, activate it inside the tmux session first, also as a separate `tmux send-keys`.
 Check tmux state before sending new commands — the user may have acted.
 NEVER use `| tee` inside tmux — it blocks Ctrl+C.
 NEVER use `> log.txt 2>&1` — it hides output from the user. When logging is needed, use `tmux pipe-pane` instead (see cooperation.md). When logging is not needed, just run the command directly.
