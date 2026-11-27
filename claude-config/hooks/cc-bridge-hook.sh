@@ -3,9 +3,13 @@
 #
 # Events: stop | stop-failure | prompt-submit | notify | pretool | posttool
 #
-# All events are fire-and-forget except `pretool', which still emits a
-# JSON `defer' to stdout so CC's TUI handles the actual permission
-# decision.  Emacs is notify-only — it never decides for CC.
+# All events are fire-and-forget except two:
+#   * `pretool' still emits a JSON `defer' to stdout, so CC's TUI
+#     handles the permission decision.
+#   * `permreq', on the local box and with an Emacs that knows how,
+#     WAITS for Emacs's answer and prints it as the decision (see
+#     "PermissionRequest: wait for Emacs" below).  The dialog in CC's
+#     TUI stays usable all the while; whichever answers first wins.
 #
 # Transport rules:
 #   * Local box (no $SSH_CONNECTION):   try emacsclient.  If the bridge
@@ -200,8 +204,8 @@ case "$event" in
     rmate_prefix=cc-bridge-posttool ;;
   permreq)
     # PermissionRequest: fires only when CC actually needs a decision and
-    # carries tool_name/tool_input.  We print NOTHING -- stdout here would be
-    # read as a decision; the TUI stays the sole decision point.
+    # carries tool_name/tool_input.  Stdout here is read as a decision, so
+    # we print NOTHING unless Emacs gave one (hold_for_answer).
     ec_fn=claude-code-bridge--on-permission-request-from-file
     rmate_prefix=cc-bridge-permreq ;;
   *)
@@ -218,6 +222,71 @@ fail() {
   exit 0
 }
 
+# ── PermissionRequest: wait for Emacs ────────────────────────────────
+# CC runs this hook while its permission dialog is up and takes a
+# decision the hook prints.  So instead of typing keys into the TUI,
+# Emacs answers here: we make a directory, leave our pid in it, tell
+# Emacs (claude-code-bridge-request.el), and wait for the file `answer':
+#
+#   allow          this once
+#   allow-always   and write the rule CC suggested (the dialog's
+#                  "Yes, and don't ask again ...")
+#   deny           and stop, as the dialog's "No" does
+#   (empty)        Emacs lets go: the dialog was answered in the TUI,
+#                  or the turn moved on.  Print nothing.
+#
+# Printing nothing leaves CC exactly as without this hook, so every
+# failure here -- no answer in time, a killed hook, a word we do not
+# know -- falls back to the dialog.
+#
+# Measured on CC 2.1.332: CC ends a waiting hook with SIGTERM after
+# 600 s when settings.json gives no `timeout'; the dialog stays.  We
+# give up before that.  A dialog answered in the TUI does NOT end the
+# hook; Emacs's empty answer does.
+HOLD_SECONDS="${CC_BRIDGE_HOLD_SECONDS:-540}"
+HOLD_DIR=""
+hold_for_answer() {   # hold_for_answer <payload-file> <iterm-id>; never returns
+  local verb
+  HOLD_DIR=$(mktemp -d -t "cc-bridge-hold.XXXXXX") || return 1
+  trap '[ -n "$HOLD_DIR" ] && rm -rf "$HOLD_DIR"' EXIT
+  trap 'log "hold: signalled, giving up"; exit 0' TERM INT HUP
+  echo $$ > "$HOLD_DIR/pid"
+  log "hold: waiting in $HOLD_DIR (up to ${HOLD_SECONDS}s)"
+  if ! emacsclient --no-wait \
+         --eval "($hold_fn \"$1\" \"$2\" \"$HOLD_DIR\")" >/dev/null 2>&1; then
+    log "hold: emacsclient call failed"
+    exit 0
+  fi
+  SECONDS=0
+  while [ ! -e "$HOLD_DIR/answer" ] && [ "$SECONDS" -lt "$HOLD_SECONDS" ]; do
+    sleep 0.2
+  done
+  if [ ! -e "$HOLD_DIR/answer" ]; then
+    log "hold: no answer in ${HOLD_SECONDS}s, leaving it to the TUI"
+    exit 0
+  fi
+  verb=$(tr -d '[:space:]' < "$HOLD_DIR/answer" 2>/dev/null)
+  log "hold: answer='${verb}' after ${SECONDS}s"
+  case "$verb" in
+    allow)
+      jq -cn '{hookSpecificOutput:{hookEventName:"PermissionRequest",
+               decision:{behavior:"allow"}}}' ;;
+    allow-always)
+      printf '%s' "$input" \
+        | jq -c '{hookSpecificOutput:{hookEventName:"PermissionRequest",
+                  decision:{behavior:"allow",
+                            updatedPermissions:(.permission_suggestions // [])}}}' ;;
+    deny)
+      jq -cn '{hookSpecificOutput:{hookEventName:"PermissionRequest",
+               decision:{behavior:"deny",
+                         message:"The user declined this from Emacs.",
+                         interrupt:true}}}' ;;
+    *) ;;
+  esac
+  exit 0
+}
+hold_fn=claude-code-bridge--on-permission-hold-from-file
+
 log "fired: ${input:0:200}"
 
 session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
@@ -226,9 +295,16 @@ session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
 # ── Tier 1: local emacsclient ──
 if [ -z "${SSH_CONNECTION:-}" ]; then
   command -v emacsclient >/dev/null 2>&1 || fail "no emacsclient"
-  probe=$(timeout 2s emacsclient --eval "(and (fboundp (quote $ec_fn)) t)" 2>/dev/null \
+  # One round trip says whether the bridge is there, and for `permreq'
+  # also whether this Emacs can answer a waiting hook.
+  probe_expr="(and (fboundp (quote $ec_fn)) t)"
+  [ "$event" = permreq ] && probe_expr="(cond ((fboundp (quote $hold_fn)) (quote hold)) ((fboundp (quote $ec_fn)) t))"
+  probe=$(timeout 2s emacsclient --eval "$probe_expr" 2>/dev/null \
             | tr -d '[:space:]"')
-  [ "$probe" = "t" ] || fail "bridge not loaded / emacs unreachable"
+  case "$probe" in
+    t|hold) ;;
+    *) fail "bridge not loaded / emacs unreachable" ;;
+  esac
 
   # `$ITERM_SESSION_ID' is set by iTerm in every pane (via the
   # `Setting environment variables' integration) and cascades down
@@ -240,6 +316,9 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
   payload=$(mktemp -t "cc-bridge-payload.XXXXXX") || fail "mktemp payload"
   printf '%s' "$input" > "$payload" || { rm -f "$payload"; fail "write payload"; }
   log "local emacsclient → $payload  iid=${iterm_iid:-<none>}"
+  # Wait for Emacs's answer when it can give one.  Comes back only when
+  # the directory could not be made; then tell Emacs as before.
+  [ "$probe" = hold ] && hold_for_answer "$payload" "$iterm_iid"
   emacsclient --no-wait \
     --eval "($ec_fn \"$payload\" \"$iterm_iid\")" >/dev/null 2>&1 \
     || log "emacsclient call failed"
