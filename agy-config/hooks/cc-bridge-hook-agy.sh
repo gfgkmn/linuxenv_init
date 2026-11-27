@@ -15,19 +15,28 @@
 #                   screen after this event to find out.
 #   posttool        wired to agy's PostToolUse: the tool ran.
 #
-# PreToolUse is the one hook whose stdout agy takes as a DECISION, and an
-# answer with no decision denies the tool.  So `pretool' prints
-# `{"decision":"allow"}' -- on every path, also when Emacs is away or the
-# bridge is switched off.  `allow' means "no objection": with
-# `toolPermission' strict agy still asked the user (measured, 1.5.17).
-# It is not `auto_approve'.
+# PreToolUse is the one hook whose stdout agy takes as a DECISION, so
+# `pretool' prints NOTHING, on every path, also when Emacs is away or
+# the bridge is switched off.  Measured on agy 1.5.17 (2026-11-27), one
+# `run_command' per case, against a run with no PreToolUse hook at all:
+#
+#   hook prints             default mode        toolPermission strict
+#   (no hook)               tool runs           agy asks the user
+#   nothing                 tool runs           agy asks the user
+#   {"decision":"allow"}    tool runs           agy asks the user
+#   {}                      DENIED by the hook  DENIED by the hook
+#
+# Nothing and `allow' came out the same in both; nothing is the one that
+# is no opinion by construction, where `allow' is one that happened to
+# change nothing here (not measured: a deny or ask rule in agy's own
+# settings).  Orca's hook does the same (stablyai/orca, hook-events.ts).
 #
 # The payload goes to Emacs as agy sent it plus `"agent": "agy"'; the
 # bridge's agy module translates the field names.
 #
-# agy reads this script's stdout as JSON, so it prints one JSON object
-# and nothing else, on every path.  Emacs is notified, never consulted; every call is
-# timeout-bounded and every failure path exits 0.
+# For every other event agy reads this script's stdout as JSON, so it
+# prints one JSON object and nothing else.  Emacs is notified, never
+# consulted; every call is timeout-bounded and every failure path exits 0.
 #
 # Usage in ~/.gemini/config/hooks.json:
 #   bash '<path>/cc-bridge-hook-agy.sh' <event>
@@ -39,7 +48,7 @@ input=$(cat)
 LOG=/tmp/cc-bridge-hook.log
 log() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [agy/$event] $*" >> "$LOG" 2>/dev/null; }
 finish() {
-  if [ "$event" = pretool ]; then echo '{"decision":"allow"}'; else echo '{}'; fi
+  [ "$event" = pretool ] || echo '{}'
   exit 0
 }
 give_up() { log "$1"; finish; }
