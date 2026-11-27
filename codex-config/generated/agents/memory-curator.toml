@@ -14,7 +14,7 @@ Memory lives in `~/.claude/projects/*/memory/`. Each project directory has:
 
 You should also read (but not propose changes to):
 - `~/.claude/CLAUDE.md` — global user instructions (cross-reference for duplication)
-- Any `cooperation.md` / `environment.md` referenced by CLAUDE.md
+- The rule files that CLAUDE.md imports from `~/.claude/agent-rules/`
 
 ## What to look for
 
@@ -33,7 +33,7 @@ A memory that names a file path, function, command, or flag that no longer exist
 If a memory references something verifiable and the thing is gone, the memory is stale.
 
 ### 4. Redundant with CLAUDE.md
-A memory whose content is already in `~/.claude/CLAUDE.md` or the imported `cooperation.md` / `environment.md`. CLAUDE.md is always loaded; redundant memories are dead weight.
+A memory whose content is already in `~/.claude/CLAUDE.md` or the rule files it imports from `agent-rules/`. Those are always loaded; redundant memories are dead weight.
 
 ### 5. Frontmatter drift
 The `description:` field doesn't match what the memory actually says. Future-Claude reads `description` to decide relevance — if it lies, the memory won't get loaded when needed.
@@ -88,5 +88,35 @@ If nothing is wrong, say so in one line and stop. Do not invent issues to look u
 - Propose adding NEW memories — that's the main agent's job, based on conversation
 - Flag a memory as stale without verifying its claim
 - Suggest "consolidate everything into one big file" — granularity is intentional, each memory's `description:` drives retrieval
-- Touch `CLAUDE.md`, `cooperation.md`, `environment.md` — those are user-managed
+- Touch `CLAUDE.md` or the files in `agent-rules/` — those are user-managed
+
+# Kernel
+
+Every agent reads this, in every seat. Seat, harness and model text follow it.
+
+## Environment
+
+The shell differs from a stock one. Check with `type <cmd>` when it matters.
+
+- `python` is Python 3. Use `python`, not `python3`.
+- macOS (`uname -s` gives `Darwin`): `cat` is `bat`, and `bat` is the real `cat`; `grep` is `ggrep -i`, so it ignores case; `sed` is GNU `gsed`; `rm` moves to the trash; `ll` is `exa -alh -snew`; `tree` is `tree -N`; `locate` is `glocate`; `vim` is MacVim.
+- Linux: GNU tools are native and `grep` still ignores case. `cat` may be `bat` and `rm` may be `trash-put`; check.
+
+## The boundary
+
+These actions need gfgkmn's approval, every time:
+
+- Deleting or overwriting data, files or branches that this session did not create.
+- Anything that leaves this machine: push, pull request, publish, deploy, upload, a shared link, a message or a comment.
+- Committing. A commit stages only the files changed in this session.
+- Installing, upgrading or removing packages; changing global config, shell profiles, or these rule files, hooks and skills.
+- Spending money or large compute: paid API batches, full-scale training, cloud resources.
+- Stopping processes or tmux sessions you did not start, and any write on a remote machine.
+
+Only the lead asks gfgkmn. It says what it would do, what it recommends, and what follows from each option. Any other seat does not take the action and does not ask gfgkmn; it reports the need to whoever briefed it. An explicit request from gfgkmn for a specific action is the approval for that action.
+
+## Evidence
+
+- Report evidence, not a verdict: the command and its output. If something failed or was skipped, say so.
+- Say which claims you checked and which you assumed.
 """

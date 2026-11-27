@@ -21,7 +21,9 @@ stops following links — today it follows them).
 | `skills/<n>/SKILL.md` | `~/.codex/skills/<n>` | **symlinked** — identical format, one file serves both |
 | `commands/<n>.md` (slash commands) | `~/.codex/skills/<n>` | generated: Codex has no slash commands, skills are its invocable unit |
 | `agents/<n>.md` | `~/.codex/agents/<n>.toml` | generated: `name` / `description` / `developer_instructions` |
-| `CLAUDE.md` + `@cooperation.md` + `@environment.md` | `~/.codex/AGENTS.md` | generated with the imports inlined — Codex has no `@file` syntax |
+| `agent-rules/` kernel + seats + `harness/codex.md` + `models/gpt-family.md` | `~/.codex/AGENTS.md` | generated as one joined file — Codex has no `@file` syntax. `CLAUDE.md` imports the same kernel and seats with Claude's own harness and model files |
+| `agent-rules/` kernel + seats + `harness/agy.md` + `models/gemini-family.md` | `generated/agy/AGENTS.md` | generated the same way for Antigravity |
+| `agent-rules/subagents.map` | appended to each listed subagent's `.toml` | Claude Code supplies these files through a hook; Codex has none wired |
 | `settings.json` hooks | `~/.codex/hooks.json` | same schema, same event names, **but trust-gated** (below) |
 | `settings.json` permissions | `config.toml` sandbox / `[projects.*] trust_level` | not 1:1, not translated |
 | `statusline-command.sh` | — | no Codex equivalent |
