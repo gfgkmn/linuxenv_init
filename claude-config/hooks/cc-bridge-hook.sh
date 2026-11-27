@@ -3,8 +3,8 @@
 #
 # Events: stop | stop-failure | prompt-submit | notify | pretool | posttool
 #
-# All events are fire-and-forget except `pretool', which still emits a
-# JSON `defer' to stdout so CC's TUI handles the actual permission
+# All events are fire-and-forget. `pretool' prints no decision, so CC's
+# own permission flow handles the actual permission
 # decision.  Emacs is notify-only — it never decides for CC.
 #
 # Transport rules:
@@ -24,8 +24,12 @@ input=$(cat)
 LOG=/tmp/cc-bridge-hook.log
 log() { echo "$(date -u +%Y-%m-%dT%H:%M:%S.%NZ) [$event] $*" >> "$LOG" 2>/dev/null; }
 
-emit_defer() {
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"defer"}}'
+no_decision() {
+  # Print nothing, so Claude Code's own permission flow decides. This used to
+  # answer "defer". An interactive session ignores that answer, but a subagent
+  # and a `claude -p` run honor it: the tool call is parked and never runs,
+  # which silently dropped every subagent's report.
+  :
 }
 
 # ── Per-session hook disable ─────────────────────────────────────────
@@ -33,7 +37,7 @@ emit_defer() {
 # UUIDs flagged by `M-x claude-code-bridge-toggle-session-hooks'.  When
 # the incoming payload's session_id is in that set, short-circuit:
 #   * stop / prompt-submit / notify / posttool → exit 0 silently.
-#   * pretool                                  → emit `defer' so CC's
+#   * pretool                                  → print nothing so CC's 
 #                                                TUI handles the prompt.
 # ── Global kill switch ───────────────────────────────────────────────
 # Single file presence test: when present, EVERY hook event (across
@@ -44,7 +48,7 @@ emit_defer() {
 GLOBAL_DISABLE_FILE="${HOME}/.claude/cc-bridge-disabled-globally"
 if [[ -e "$GLOBAL_DISABLE_FILE" ]]; then
   log "GLOBAL DISABLE active — short-circuit (event=$event)"
-  [[ "$event" == "pretool" ]] && emit_defer
+  [[ "$event" == "pretool" ]] && no_decision
   exit 0
 fi
 
@@ -57,7 +61,7 @@ if [[ -r "$DISABLE_FILE" ]]; then
   if [[ -n "$payload_uuid" ]] \
      && grep -Fxq "$payload_uuid" "$DISABLE_FILE" 2>/dev/null; then
     log "DISABLED for uuid=${payload_uuid:0:8} — short-circuit"
-    [[ "$event" == "pretool" ]] && emit_defer
+    [[ "$event" == "pretool" ]] && no_decision
     exit 0
   fi
 fi
@@ -75,7 +79,7 @@ fi
 #
 # When ALL parts of the call match an allow pattern, the bridge stays
 # silent — CC's permission system handles it natively.  Otherwise we
-# fire-and-forget a notify to Emacs and emit `defer' so CC's TUI is
+# fire-and-forget a notify to Emacs and print nothing, so CC's TUI is
 # the sole decision point.  Edge cases (command substitutions,
 # heredocs) leak through as false-positive notifications, never as
 # wrong decisions.
@@ -206,15 +210,15 @@ case "$event" in
     rmate_prefix=cc-bridge-permreq ;;
   *)
     log "unknown event: $event"
-    [[ "$event" == "pretool" ]] && emit_defer
+    [[ "$event" == "pretool" ]] && no_decision
     exit 0 ;;
 esac
 
-# Fire-and-forget IPC; pretool also emits `defer' to stdout afterwards
+# Fire-and-forget IPC; pretool prints no decision afterwards,
 # so CC's TUI is the sole decision point.
 fail() {
   log "$1"
-  [[ "$event" == "pretool" ]] && emit_defer
+  [[ "$event" == "pretool" ]] && no_decision
   exit 0
 }
 
@@ -243,7 +247,7 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
   emacsclient --no-wait \
     --eval "($ec_fn \"$payload\" \"$iterm_iid\")" >/dev/null 2>&1 \
     || log "emacsclient call failed"
-  [[ "$event" == "pretool" ]] && emit_defer
+  [[ "$event" == "pretool" ]] && no_decision
   exit 0
 fi
 
@@ -258,5 +262,5 @@ log "remote rmate → $display_name  payload=$payload"
 timeout 5s rmate -m "$display_name" "$payload" 2>>"$LOG" \
   || log "rmate exit=$?"
 rm -f "$payload"
-[[ "$event" == "pretool" ]] && emit_defer
+[[ "$event" == "pretool" ]] && no_decision
 exit 0

@@ -94,5 +94,18 @@ check deny   'screencapture -x /tmp/s.png'
 check deny   'cd /tmp && screencapture -x s.png'
 HOOK="$TMUX_HOOK"
 
+# ── No shell hook here may answer allow or defer ──
+# "allow" skips the permission prompt for the call; "defer" parks the call in
+# subagents and `claude -p` runs, so it never happens. A hook with no objection
+# prints nothing. (audit_edit.py answers allow only after gfgkmn approves.)
+DECIDERS=$(grep -lE 'permissionDecision"?[: ]+"(allow|defer)"' "$(dirname "$HOOK")"/*.sh 2>/dev/null \
+  | grep -v "$(basename "${BASH_SOURCE[0]}")" || true)
+if [ -n "$DECIDERS" ]; then
+  FAIL=$((FAIL + 1))
+  printf 'FAIL  these hooks answer allow or defer: %s\n' "$(echo $DECIDERS)"
+else
+  PASS=$((PASS + 1))
+fi
+
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" = 0 ]
