@@ -57,7 +57,7 @@
       "Read(**/*.pem)"
     ]
   },
-  "model": "claude-fable-5-1[1m]",
+  "model": "fable[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -203,5 +203,6 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized",
   "editorMode": "vim",
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "feedbackDrafts": "off"
 }
