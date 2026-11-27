@@ -6,7 +6,7 @@ To check: `uname -s` returns `Darwin` (macOS) or `Linux`.
 
 ## macOS (Darwin)
 
-Machine: MacBook Pro / Mac Mini, username `gfgkmn`.
+Machine: MacBook Pro (username `gfgkmn`) / Mac Mini (username `fhqgqj`). Check with `scutil --get ComputerName`.
 
 On macOS, GNU tools are installed via Homebrew with `g` prefixes, and several commands are aliased:
 
@@ -23,6 +23,27 @@ On macOS, GNU tools are installed via Homebrew with `g` prefixes, and several co
 | `tree`        | `tree -N`             |                                   |
 | `td`          | `tldr`                |                                   |
 | `locate`      | `glocate`             |                                   |
+
+### Default Python (Homebrew)
+
+`python` and `python3` in `/opt/homebrew/bin` are links made by `stick-python <version>` (`~/Applications/bin/stick-python`). The version is per machine:
+
+| Machine      | Version | Command              |
+|--------------|---------|----------------------|
+| MacBook Pro  | 3.10    | `stick-python 3.10`  |
+| Mac Mini     | 3.14    | `stick-python 3.14`  |
+
+- `brew upgrade` of a python formula re-links `python3` to the newest python and leaves no plain `python`. Hooks then fail with `python: command not found` (exit 127), for example `PreToolUse:Write hook failed`.
+- `morning-update` re-links after its brew step (step 1d). If the error shows up between runs, run the `stick-python` command for the machine. Do not edit hook commands to `python3`.
+- `python` as a zsh alias exists only in interactive shells. Hooks and scripts need the real link.
+
+### Screenshots from the other machine
+
+CleanShot saves to `~/Temp/CleanShot/` on both machines. The user names are different: `gfgkmn` on the MacBook Pro (ssh host `macbook`), `fhqgqj` on the Mac Mini.
+
+- When the user gives a path under `/Users/gfgkmn/Temp/CleanShot/` and the session runs on the Mac Mini, the file is on the MacBook. Do not report "file does not exist". Copy it, then read the local copy:
+  `scp macbook:'~/Temp/CleanShot/<file>' ~/Temp/CleanShot/`
+- Apply the same rule to any other `/Users/gfgkmn/...` path given on the Mac Mini: fetch it from `macbook` first.
 
 ## Linux
 
