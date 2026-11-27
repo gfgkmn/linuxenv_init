@@ -5,6 +5,12 @@ it into the formats Codex reads, and links the result into `$CODEX_HOME`
 (`~/.codex`). Nothing here is hand-maintained except `hooks.json` and the
 scripts in `hooks/`.
 
+`hooks.json` names its scripts as `{HOOKS}/<script>`. `gen.py` writes
+`generated/hooks.json` with this checkout's own `hooks/` directory in its
+place, and that file is what gets linked: Codex wants absolute paths, and
+the checkout sits under a different home on each machine. It is the one
+generated file that is not committed.
+
 ```bash
 python gen.py      # claude-config -> generated/
 bash install.sh    # generated/ + claude-config/skills -> ~/.codex

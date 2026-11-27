@@ -19,6 +19,11 @@ Three translations, because Codex and CC agree on skills but not on the rest:
       own harness file and its model family's file (see COMPOSE). Neither
       tool supports CC's `@file` imports, so the parts are joined into one
       file. HTML comments are notes for the human and are stripped.
+  hooks.json                      ->  generated/hooks.json
+      `{HOOKS}' in a command becomes this checkout's hooks/ directory.
+      Codex wants an absolute path, and the checkout is under a different
+      home on each machine -- so this one output is per machine and is
+      not committed (see .gitignore).
 
 Skills themselves are not copied -- install.sh symlinks them, so editing a
 SKILL.md once serves both agents.
@@ -200,6 +205,15 @@ def gen_rules(tool):
     return write(os.path.join(OUT, OUTPUT[tool]), text), missing
 
 
+def gen_hooks():
+    with open(os.path.join(HERE, "hooks.json"), encoding="utf-8") as fh:
+        text = fh.read()
+    hooks = os.path.join(HERE, "hooks")
+    if "'" in hooks or '"' in hooks or "\\" in hooks:
+        raise SystemExit(f"cannot quote the hooks directory: {hooks}")
+    return write(os.path.join(OUT, "hooks.json"), text.replace("{HOOKS}", hooks))
+
+
 def main():
     print("commands -> skills:")
     for slug, state in gen_command_skills():
@@ -207,6 +221,7 @@ def main():
     print("agents -> toml:")
     for slug, state in gen_agents():
         print(f"  {state:9} {slug}")
+    print(f"hooks.json: {gen_hooks()}")
     failed = 0
     reserved = reserved_names()
     if reserved:

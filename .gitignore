@@ -3,3 +3,5 @@ claude-config/.claude/
 .DS_Store
 __pycache__/
 *.lprof
+# Per machine: absolute paths into this checkout (codex-config/gen.py)
+codex-config/generated/hooks.json

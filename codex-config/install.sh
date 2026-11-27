@@ -5,7 +5,7 @@
 #   claude-config/skills/*        -> $CODEX_HOME/skills/*          (symlink)
 #   codex-config/generated/...    -> $CODEX_HOME/{skills,agents}   (symlink)
 #   codex-config/generated/AGENTS.md -> $CODEX_HOME/AGENTS.md      (symlink)
-#   codex-config/hooks.json       -> $CODEX_HOME/hooks.json        (symlink)
+#   codex-config/generated/hooks.json -> $CODEX_HOME/hooks.json    (symlink)
 #
 # Symlinks, not copies, so editing a SKILL.md once serves both agents.
 # Pass --copy if Codex turns out not to follow links.  Idempotent: safe to
@@ -106,7 +106,7 @@ install_one "$GEN/AGENTS.md" "$CODEX_HOME/AGENTS.md" "AGENTS.md"
 
 # --- hooks ------------------------------------------------------------
 say "hooks:"
-install_one "$HERE/hooks.json" "$CODEX_HOME/hooks.json" "hooks.json"
+install_one "$GEN/hooks.json" "$CODEX_HOME/hooks.json" "hooks.json"
 
 say ""
 say "installed. Codex only runs a hooks.json you have TRUSTED:"

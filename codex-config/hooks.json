@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SessionStart",
+            "command": "bash '{HOOKS}/capture-payload.sh' SessionStart",
             "timeoutSec": 5
           }
         ]
@@ -16,12 +16,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' UserPromptSubmit",
+            "command": "bash '{HOOKS}/capture-payload.sh' UserPromptSubmit",
             "timeoutSec": 5
           },
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' prompt-submit",
+            "command": "bash '{HOOKS}/cc-bridge-hook-codex.sh' prompt-submit",
             "timeoutSec": 8
           }
         ]
@@ -32,12 +32,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PreToolUse",
+            "command": "bash '{HOOKS}/capture-payload.sh' PreToolUse",
             "timeoutSec": 5
           },
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' pretool",
+            "command": "bash '{HOOKS}/cc-bridge-hook-codex.sh' pretool",
             "timeoutSec": 8
           }
         ]
@@ -48,12 +48,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PermissionRequest",
+            "command": "bash '{HOOKS}/capture-payload.sh' PermissionRequest",
             "timeoutSec": 5
           },
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' permission-request",
+            "command": "bash '{HOOKS}/cc-bridge-hook-codex.sh' permission-request",
             "timeoutSec": 8
           }
         ]
@@ -64,12 +64,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PostToolUse",
+            "command": "bash '{HOOKS}/capture-payload.sh' PostToolUse",
             "timeoutSec": 5
           },
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' posttool",
+            "command": "bash '{HOOKS}/cc-bridge-hook-codex.sh' posttool",
             "timeoutSec": 8
           }
         ]
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PreCompact",
+            "command": "bash '{HOOKS}/capture-payload.sh' PreCompact",
             "timeoutSec": 5
           }
         ]
@@ -91,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' PostCompact",
+            "command": "bash '{HOOKS}/capture-payload.sh' PostCompact",
             "timeoutSec": 5
           }
         ]
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SubagentStart",
+            "command": "bash '{HOOKS}/capture-payload.sh' SubagentStart",
             "timeoutSec": 5
           }
         ]
@@ -113,7 +113,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SubagentStop",
+            "command": "bash '{HOOKS}/capture-payload.sh' SubagentStop",
             "timeoutSec": 5
           }
         ]
@@ -124,12 +124,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' Stop",
+            "command": "bash '{HOOKS}/capture-payload.sh' Stop",
             "timeoutSec": 5
           },
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/cc-bridge-hook-codex.sh' stop",
+            "command": "bash '{HOOKS}/cc-bridge-hook-codex.sh' stop",
             "timeoutSec": 8
           }
         ]
@@ -140,7 +140,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash '/Users/gfgkmn/Applications/linuxenv_init/codex-config/hooks/capture-payload.sh' SessionEnd",
+            "command": "bash '{HOOKS}/capture-payload.sh' SessionEnd",
             "timeoutSec": 5
           }
         ]

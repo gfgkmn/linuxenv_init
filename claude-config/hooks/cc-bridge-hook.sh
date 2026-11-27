@@ -3,9 +3,13 @@
 #
 # Events: stop | stop-failure | prompt-submit | notify | pretool | posttool
 #
-# All events are fire-and-forget. `pretool' prints no decision, so CC's
-# own permission flow handles the actual permission
-# decision.  Emacs is notify-only — it never decides for CC.
+# All events are fire-and-forget except one:
+#   * `permreq', on the local box and with an Emacs that knows how,
+#     WAITS for Emacs's answer and prints it as the decision (see
+#     "PermissionRequest: wait for Emacs" below).  The dialog in CC's
+#     TUI stays usable all the while; whichever answers first wins.
+# `pretool' prints no decision, so CC's own permission flow handles the
+# actual permission decision.
 #
 # Transport rules:
 #   * Local box (no $SSH_CONNECTION):   try emacsclient.  If the bridge
@@ -204,8 +208,8 @@ case "$event" in
     rmate_prefix=cc-bridge-posttool ;;
   permreq)
     # PermissionRequest: fires only when CC actually needs a decision and
-    # carries tool_name/tool_input.  We print NOTHING -- stdout here would be
-    # read as a decision; the TUI stays the sole decision point.
+    # carries tool_name/tool_input.  Stdout here is read as a decision, so
+    # we print NOTHING unless Emacs gave one (hold_for_answer).
     ec_fn=claude-code-bridge--on-permission-request-from-file
     rmate_prefix=cc-bridge-permreq ;;
   *)
@@ -222,17 +226,139 @@ fail() {
   exit 0
 }
 
+# ── PermissionRequest: wait for Emacs ────────────────────────────────
+# CC runs this hook while its permission dialog is up and takes a
+# decision the hook prints.  So instead of typing keys into the TUI,
+# Emacs answers here: we make a directory, leave our pid in it, tell
+# Emacs (claude-code-bridge-request.el), and wait for the file `answer':
+#
+#   allow          this once
+#   allow-always   and write the rule CC suggested (the dialog's
+#                  "Yes, and don't ask again ...")
+#   deny           and stop, as the dialog's "No" does
+#   (empty)        Emacs lets go: the dialog was answered in the TUI,
+#                  or the turn moved on.  Print nothing.
+#
+# Printing nothing leaves CC exactly as without this hook, so every
+# failure here -- no answer in time, a killed hook, a word we do not
+# know -- falls back to the dialog.
+#
+# Measured on CC 2.1.332: CC ends a waiting hook with SIGTERM after
+# 600 s when settings.json gives no `timeout'; the dialog stays.  We
+# give up before that.  A dialog answered in the TUI does NOT end the
+# hook; Emacs's empty answer does.
+HOLD_SECONDS="${CC_BRIDGE_HOLD_SECONDS:-540}"
+HOLD_DIR=""
+hold_for_answer() {   # hold_for_answer <payload-file> <iterm-id>; never returns
+  local verb
+  HOLD_DIR=$(mktemp -d -t "cc-bridge-hold.XXXXXX") || return 1
+  trap '[ -n "$HOLD_DIR" ] && rm -rf "$HOLD_DIR"' EXIT
+  trap 'log "hold: signalled, giving up"; exit 0' TERM INT HUP
+  echo $$ > "$HOLD_DIR/pid"
+  log "hold: waiting in $HOLD_DIR (up to ${HOLD_SECONDS}s)"
+  if ! emacsclient --no-wait \
+         --eval "($hold_fn \"$1\" \"$2\" \"$HOLD_DIR\")" >/dev/null 2>&1; then
+    log "hold: emacsclient call failed"
+    exit 0
+  fi
+  SECONDS=0
+  while [ ! -e "$HOLD_DIR/answer" ] && [ "$SECONDS" -lt "$HOLD_SECONDS" ]; do
+    sleep 0.2
+  done
+  if [ ! -e "$HOLD_DIR/answer" ]; then
+    log "hold: no answer in ${HOLD_SECONDS}s, leaving it to the TUI"
+    exit 0
+  fi
+  verb=$(tr -d '[:space:]' < "$HOLD_DIR/answer" 2>/dev/null)
+  log "hold: answer='${verb}' after ${SECONDS}s"
+  case "$verb" in
+    allow)
+      jq -cn '{hookSpecificOutput:{hookEventName:"PermissionRequest",
+               decision:{behavior:"allow"}}}' ;;
+    allow-always)
+      printf '%s' "$input" \
+        | jq -c '{hookSpecificOutput:{hookEventName:"PermissionRequest",
+                  decision:{behavior:"allow",
+                            updatedPermissions:(.permission_suggestions // [])}}}' ;;
+    deny)
+      jq -cn '{hookSpecificOutput:{hookEventName:"PermissionRequest",
+               decision:{behavior:"deny",
+                         message:"The user declined this from Emacs.",
+                         interrupt:true}}}' ;;
+    *) ;;
+  esac
+  exit 0
+}
+hold_fn=claude-code-bridge--on-permission-hold-from-file
+
+# ── Spool: events Emacs could not take ───────────────────────────────
+# When the local Emacs does not answer (restarting, hung, bridge not
+# loaded yet) the event used to be dropped: a turn that ended meanwhile
+# never showed its reply.  Now the events that still mean something
+# later are saved, one file each, and Emacs replays them when it is
+# back (claude-code-bridge-spool.el): at load, and when the next event
+# that does get through finds the folder not empty (below).
+#
+# A file is a header line -- event, iTerm id, seconds since the epoch,
+# tab-separated -- and then the payload as CC sent it.  It is written
+# as `*.part' and renamed, so Emacs never reads half of one.  PreToolUse
+# and PostToolUse are not saved: they only matter while they happen.
+SPOOL_DIR="${CC_BRIDGE_SPOOL_DIR:-$HOME/.claude/cc-bridge-spool}"
+SPOOL_MAX=500
+spool_event() {
+  local name count
+  case "$event" in
+    stop|stop-failure|prompt-submit|notify|permreq) ;;
+    *) return 0 ;;
+  esac
+  mkdir -p "$SPOOL_DIR" 2>/dev/null || { log "spool: cannot make $SPOOL_DIR"; return 0; }
+  count=$(ls -1 "$SPOOL_DIR" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "${count:-0}" -ge "$SPOOL_MAX" ]; then
+    log "spool: full ($count files), event dropped"
+    return 0
+  fi
+  name="$(date +%s.%N)-$$.$event"
+  if { printf '%s\t%s\t%s\n' "$event" "${ITERM_SESSION_ID:-}" "$(date +%s)"
+       printf '%s' "$input"; } > "$SPOOL_DIR/$name.part" 2>/dev/null \
+     && mv "$SPOOL_DIR/$name.part" "$SPOOL_DIR/$name.json" 2>/dev/null; then
+    log "spool: saved $name.json"
+  else
+    rm -f "$SPOOL_DIR/$name.part" 2>/dev/null
+    log "spool: could not write $name"
+  fi
+}
+
 log "fired: ${input:0:200}"
 
 session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
 [ -z "$session_id" ] && fail "no session_id"
 
 # ── Tier 1: local emacsclient ──
-if [ -z "${SSH_CONNECTION:-}" ]; then
+# CC_BRIDGE_LOCAL says "report to the Emacs on this machine" whatever
+# SSH_CONNECTION says.  The bridge sets it for the workers it starts
+# (claude-code-bridge-worker.el): their records live in that Emacs, also
+# on a machine whose sessions otherwise report elsewhere over rmate.
+if [ -z "${SSH_CONNECTION:-}" ] || [ -n "${CC_BRIDGE_LOCAL:-}" ]; then
   command -v emacsclient >/dev/null 2>&1 || fail "no emacsclient"
-  probe=$(timeout 2s emacsclient --eval "(and (fboundp (quote $ec_fn)) t)" 2>/dev/null \
+  # One round trip says whether the bridge is there, and for `permreq'
+  # also whether this Emacs can answer a waiting hook.
+  probe_expr="(and (fboundp (quote $ec_fn)) t)"
+  [ "$event" = permreq ] && probe_expr="(cond ((fboundp (quote $hold_fn)) (quote hold)) ((fboundp (quote $ec_fn)) t))"
+  probe=$(timeout 2s emacsclient --eval "$probe_expr" 2>/dev/null \
             | tr -d '[:space:]"')
-  [ "$probe" = "t" ] || fail "bridge not loaded / emacs unreachable"
+  case "$probe" in
+    t|hold) ;;
+    *) spool_event
+       fail "bridge not loaded / emacs unreachable" ;;
+  esac
+  # Emacs is back and events are waiting: have them replayed before this
+  # one is delivered, so that they arrive in the order they happened.
+  if [ -n "$(ls -A "$SPOOL_DIR" 2>/dev/null)" ]; then
+    log "spool: asking Emacs to replay"
+    emacsclient --no-wait \
+      --eval "(and (fboundp (quote claude-code-bridge-spool-drain)) (claude-code-bridge-spool-drain))" \
+      >/dev/null 2>&1 || log "spool: replay call failed"
+  fi
 
   # `$ITERM_SESSION_ID' is set by iTerm in every pane (via the
   # `Setting environment variables' integration) and cascades down
@@ -244,6 +370,9 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
   payload=$(mktemp -t "cc-bridge-payload.XXXXXX") || fail "mktemp payload"
   printf '%s' "$input" > "$payload" || { rm -f "$payload"; fail "write payload"; }
   log "local emacsclient → $payload  iid=${iterm_iid:-<none>}"
+  # Wait for Emacs's answer when it can give one.  Comes back only when
+  # the directory could not be made; then tell Emacs as before.
+  [ "$probe" = hold ] && hold_for_answer "$payload" "$iterm_iid"
   emacsclient --no-wait \
     --eval "($ec_fn \"$payload\" \"$iterm_iid\")" >/dev/null 2>&1 \
     || log "emacsclient call failed"
