@@ -99,7 +99,7 @@ function deliver(event: string, ctx: any, extra: Record<string, unknown> = {}) {
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) return log(event, "no session id");
     if (switchedOff(sessionId)) return;
-    if (process.env.SSH_CONNECTION)
+    if (process.env.SSH_CONNECTION && !process.env.CC_BRIDGE_LOCAL)
       return log(event, "remote pi session: no transport to the local Emacs yet");
     const payload = {
       agent: "pi",

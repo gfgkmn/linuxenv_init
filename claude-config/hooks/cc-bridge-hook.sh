@@ -330,7 +330,11 @@ session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
 [ -z "$session_id" ] && fail "no session_id"
 
 # ── Tier 1: local emacsclient ──
-if [ -z "${SSH_CONNECTION:-}" ]; then
+# CC_BRIDGE_LOCAL says "report to the Emacs on this machine" whatever
+# SSH_CONNECTION says.  The bridge sets it for the workers it starts
+# (claude-code-bridge-worker.el): their records live in that Emacs, also
+# on a machine whose sessions otherwise report elsewhere over rmate.
+if [ -z "${SSH_CONNECTION:-}" ] || [ -n "${CC_BRIDGE_LOCAL:-}" ]; then
   command -v emacsclient >/dev/null 2>&1 || fail "no emacsclient"
   # One round trip says whether the bridge is there, and for `permreq'
   # also whether this Emacs can answer a waiting hook.

@@ -50,7 +50,9 @@ fi
 
 # Remote Codex has no route yet: the bridge's remote tier is rmate plus a
 # Claude-shaped payload.  Say so in the log rather than half-delivering.
-if [ -n "${SSH_CONNECTION:-}" ]; then
+# CC_BRIDGE_LOCAL: a session the bridge started here reports here,
+# whatever SSH_CONNECTION says (see cc-bridge-hook.sh).
+if [ -n "${SSH_CONNECTION:-}" ] && [ -z "${CC_BRIDGE_LOCAL:-}" ]; then
   give_up "remote Codex session: no transport to the local Emacs yet"
 fi
 
