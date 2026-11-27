@@ -49,7 +49,7 @@ All use `emacsclient --eval '<sexp>'`. Use `(quote NAME)` form to avoid shell-qu
 
 ## What NOT to eval without asking
 
-Same reversibility gate as `cooperation.md § Manual Trigger`. Read-only introspection is free; anything that mutates state needs user approval first:
+Same reversibility gate as "A REPL in the pane" in `agent-rules/harness/claude-code.md`. Read-only introspection is free; anything that mutates state needs user approval first:
 
 - **Ask first**: `kill-emacs`, `save-buffers-kill-emacs`, `delete-file`, `write-region`, `(setq VAR ...)` for vars the user cares about, `package-delete`, `package-refresh-contents` (slow), `load-file` with arbitrary paths, anything calling shell commands via `shell-command` / `call-process`.
 - **No ask needed**: `symbol-value`, `describe-*`, `boundp`, `fboundp`, `featurep`, `where-is-internal`, `documentation`, reading `*Messages*` or any buffer, inspecting keymaps, evaluating pure expressions into fresh temporaries.
