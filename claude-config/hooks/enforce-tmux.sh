@@ -3,17 +3,26 @@
 # PreToolUse hook: rejects long-running commands not routed through tmux.
 # Also rejects pipe-to-tee in tmux commands (blocks Ctrl+C).
 # Claude Code passes hook input as JSON via stdin.
+#
+# The command is first split into the simple commands it would run
+# (split_command.py), so `cd x && FOO=1 time python3 train.py` is checked
+# the same way as a bare `python train.py`. test-enforce-tmux.sh holds the
+# cases this hook must get right.
 
 set -euo pipefail
 
 # ── Response helpers ──
-allow() {
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+no_objection() {
+  # Print nothing. This hook is an extra check, not an approver: with no
+  # decision from it, the call goes on through the normal permission flow
+  # (allow rules, auto mode's review, or a prompt). Answering "allow" here
+  # would skip that flow for every Bash command.
   exit 0
 }
 deny() {
-  local reason="$1"
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$reason"
+  # jq builds the JSON, so a reason containing quotes stays valid.
+  jq -cn --arg reason "$1" \
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
   exit 0
 }
 
@@ -23,10 +32,11 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # Only check Bash tool calls
 if [ "$TOOL" != "Bash" ]; then
-  allow
+  no_objection
 fi
 
 COMMAND_TRIMMED=$(echo "$COMMAND" | sed 's/^[[:space:]]*//')
+TMUX_HINT="Run the original command in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
 
 # ── Rule: Block sleep+capture-pane pattern (use tmux-exec.sh instead) ──
 if echo "$COMMAND" | grep -qE 'sleep\s+[0-9]+.*tmux\s+capture-pane'; then
@@ -36,32 +46,26 @@ fi
 # ── Rule: Block pipe-to-tee inside tmux send-keys ──
 # `| tee` in tmux blocks Ctrl+C signal propagation.
 if echo "$COMMAND" | grep -q "tmux" && echo "$COMMAND" | grep -qE '\|\s*tee\b'; then
-  deny "Do NOT use | tee inside tmux — it blocks Ctrl+C. Redirect to a log file instead (e.g., command > log.txt 2>&1) or rely on the programs own logging."
+  deny "Do NOT use | tee inside tmux — it blocks Ctrl+C. To keep a log while the output stays visible, use: tmux pipe-pane -t <session> -o 'cat >> <logfile>'."
 fi
 
-# ── Known-short: always approve immediately ──
-# Python one-liners, module queries, version checks, etc.
+# ── Pattern tables ──
+
+# Known-short python invocations: skipped, never long.
 PYTHON_SHORT_PATTERNS=(
-  "^python[3]? -c "
-  "^python[3]? -m json\."
-  "^python[3]? -m pip"
-  "^python[3]? --version"
-  "^python[3]? -V"
-  "^python[3]? -m py_compile"
-  "^python[3]? -m site"
-  "^python[3]? -m this"
-  "^python[3]? -m compileall"
-  "^python[3]? setup.py"
+  "^python -c "
+  "^python -m json\."
+  "^python -m pip"
+  "^python --version"
+  "^python -V"
+  "^python -m py_compile"
+  "^python -m site"
+  "^python -m this"
+  "^python -m compileall"
+  "^python setup.py"
 )
 
-for pattern in "${PYTHON_SHORT_PATTERNS[@]}"; do
-  if echo "$COMMAND_TRIMMED" | grep -qE "$pattern"; then
-    allow
-  fi
-done
-
-# ── Known-long patterns by binary ──
-# These are always long-running regardless of arguments.
+# Always long-running regardless of arguments.
 ALWAYS_LONG_BINARIES=(
   "^torchrun "
   "^deepspeed "
@@ -87,82 +91,49 @@ ALWAYS_LONG_BINARIES=(
   "^tensorboard"
 )
 
-for pattern in "${ALWAYS_LONG_BINARIES[@]}"; do
-  if echo "$COMMAND_TRIMMED" | grep -qE "$pattern"; then
-    if echo "$COMMAND" | grep -q "tmux"; then
-      allow
-    fi
-    deny "Long-running command. Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
-  fi
-done
+# Script names that suggest a long run (python scripts, modules, shell scripts).
+LONG_SCRIPT_PATTERNS=(
+  "train"
+  "finetune"
+  "fine_tune"
+  "serve"
+  "server"
+  "benchmark"
+  "evaluate"
+  "eval"
+  "generate"
+  "infer"
+  "inference"
+  "preprocess"
+  "download"
+  "crawl"
+  "scrape"
+  "migrate"
+  "deploy"
+  "main\.py"
+  "app\.py"
+  "run\.py"
+  "launch"
+  "worker"
+  "daemon"
+  "^pytest$"
+)
 
-# ── Python script heuristic: check script name and arguments ──
-if echo "$COMMAND_TRIMMED" | grep -qE "^python[3]? "; then
-  # Extract the script name / first argument
-  SCRIPT_ARG=$(echo "$COMMAND_TRIMMED" | sed -E 's/^python[3]? +//' | awk '{print $1}')
+# Python arguments that suggest a long run (epochs, serve flags, etc.)
+LONG_ARG_PATTERNS=(
+  "--epochs"
+  "--num.train"
+  "--serve"
+  "--host"
+  "--port"
+  "--workers"
+  "--batch.size"
+  "--checkpoint"
+  "--resume"
+  "--data.dir"
+  "--output.dir"
+)
 
-  # Known long-running script name patterns
-  LONG_SCRIPT_PATTERNS=(
-    "train"
-    "finetune"
-    "fine_tune"
-    "serve"
-    "server"
-    "benchmark"
-    "evaluate"
-    "eval"
-    "generate"
-    "infer"
-    "inference"
-    "preprocess"
-    "download"
-    "crawl"
-    "scrape"
-    "migrate"
-    "deploy"
-    "main\.py"
-    "app\.py"
-    "run\.py"
-    "launch"
-    "worker"
-    "daemon"
-  )
-
-  for pattern in "${LONG_SCRIPT_PATTERNS[@]}"; do
-    if echo "$SCRIPT_ARG" | grep -qiE "$pattern"; then
-      if echo "$COMMAND" | grep -q "tmux"; then
-        allow
-      fi
-      deny "'$SCRIPT_ARG' looks long-running. Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
-    fi
-  done
-
-  # Known long-running argument patterns (epochs, serve flags, etc.)
-  LONG_ARG_PATTERNS=(
-    "--epochs"
-    "--num.train"
-    "--serve"
-    "--host"
-    "--port"
-    "--workers"
-    "--batch.size"
-    "--checkpoint"
-    "--resume"
-    "--data.dir"
-    "--output.dir"
-  )
-
-  for pattern in "${LONG_ARG_PATTERNS[@]}"; do
-    if echo "$COMMAND_TRIMMED" | grep -qiE "$pattern"; then
-      if echo "$COMMAND" | grep -q "tmux"; then
-        allow
-      fi
-      deny "Arguments suggest long-running task ($pattern). Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
-    fi
-  done
-fi
-
-# ── Non-Python known-long commands ──
 OTHER_LONG_PATTERNS=(
   "^make "
   "^cmake "
@@ -174,14 +145,90 @@ OTHER_LONG_PATTERNS=(
   "^node .*app\."
 )
 
-for pattern in "${OTHER_LONG_PATTERNS[@]}"; do
-  if echo "$COMMAND_TRIMMED" | grep -qE "$pattern"; then
-    if echo "$COMMAND" | grep -q "tmux"; then
-      allow
-    fi
-    deny "This looks long-running. Run in tmux: ~/.claude/scripts/tmux-exec.sh claude-running-\$(basename \$PWD) '$COMMAND_TRIMMED'"
+matches_any() {
+  # matches_any <text> <i|-> <pattern>... ; sets MATCHED to the matched text.
+  # One built-in regex match over all patterns: this hook runs on every Bash
+  # call, so it must not start a process per pattern.
+  local text="$1" nocase="$2" re IFS='|'
+  shift 2
+  re="$*"
+  if [ "$nocase" = i ]; then shopt -s nocasematch; fi
+  if [[ "$text" =~ $re ]]; then
+    MATCHED="${BASH_REMATCH[0]}"
+    shopt -u nocasematch
+    return 0
   fi
-done
+  shopt -u nocasematch
+  return 1
+}
 
-# ── Default: approve ──
-allow
+# First argument that names what python runs: skips flags, follows `-m`.
+python_target() {
+  local take_next=0 word
+  for word in $1; do
+    if [ "$take_next" = 1 ]; then echo "$word"; return; fi
+    case "$word" in
+      python) ;;
+      -m) take_next=1 ;;
+      -*) ;;
+      *) echo "$word"; return ;;
+    esac
+  done
+}
+
+check_segment() {
+  local SEG="$1" TARGET SCRIPT
+  local shell_re='^(bash|sh|zsh) ' script_re='^[^ ]+\.sh( |$)'
+
+  if matches_any "$SEG" - "${PYTHON_SHORT_PATTERNS[@]}"; then
+    return
+  fi
+
+  if matches_any "$SEG" - "${ALWAYS_LONG_BINARIES[@]}"; then
+    deny "Long-running command ($SEG). $TMUX_HINT"
+  fi
+
+  if [[ "$SEG" == "python "* ]]; then
+    TARGET=$(python_target "$SEG")
+    if [ -n "$TARGET" ] && matches_any "$TARGET" i "${LONG_SCRIPT_PATTERNS[@]}"; then
+      deny "'$TARGET' looks long-running. $TMUX_HINT"
+    fi
+    if matches_any "$SEG" i "${LONG_ARG_PATTERNS[@]}"; then
+      deny "Arguments suggest long-running task ($MATCHED). $TMUX_HINT"
+    fi
+  fi
+
+  # Shell scripts: `bash scripts/train.sh`, `./train.sh`
+  SCRIPT=""
+  if [[ "$SEG" =~ $shell_re ]]; then
+    for SCRIPT in ${SEG#* }; do
+      case "$SCRIPT" in -*) SCRIPT="" ;; *) break ;; esac
+    done
+  elif [[ "$SEG" =~ $script_re ]]; then
+    SCRIPT="${SEG%% *}"
+  fi
+  if [ -n "$SCRIPT" ] && matches_any "${SCRIPT##*/}" i "${LONG_SCRIPT_PATTERNS[@]}"; then
+    deny "'$SCRIPT' looks long-running. $TMUX_HINT"
+  fi
+
+  if matches_any "$SEG" - "${OTHER_LONG_PATTERNS[@]}"; then
+    deny "This looks long-running ($SEG). $TMUX_HINT"
+  fi
+}
+
+# ── Split into simple commands, then check each ──
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY=$(command -v python || command -v python3 || true)
+SEGMENTS=""
+if [ -n "$PY" ] && [ -f "$HOOK_DIR/split_command.py" ]; then
+  SEGMENTS=$(printf '%s' "$COMMAND" | "$PY" "$HOOK_DIR/split_command.py" 2>/dev/null || true)
+fi
+# Splitter unavailable: fall back to checking the command as one piece.
+[ -n "$SEGMENTS" ] || SEGMENTS="$COMMAND_TRIMMED"
+
+while IFS= read -r SEG; do
+  [ -n "$SEG" ] && check_segment "$SEG"
+done <<< "$SEGMENTS"
+
+# ── Default: no objection ──
+no_objection

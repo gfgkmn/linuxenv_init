@@ -12,8 +12,11 @@
 set -euo pipefail
 
 # ── Response helpers ──
-allow() {
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+no_objection() {
+  # Print nothing. This hook is an extra check, not an approver: with no
+  # decision from it, the call goes on through the normal permission flow
+  # (allow rules, auto mode's review, or a prompt). Answering "allow" here
+  # would skip that flow for every Bash command.
   exit 0
 }
 deny() {
@@ -28,13 +31,13 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
 # Only Bash calls can invoke a capture binary.
 if [ "$TOOL" != "Bash" ]; then
-  allow
+  no_objection
 fi
 
 # Anything routed through the sanctioned script is fine — it enforces the
 # allowlist itself. Checked first so the rules below never fire on it.
 if echo "$COMMAND" | grep -qE '(^|[[:space:]/])cc-shot\.sh([[:space:]]|$)'; then
-  allow
+  no_objection
 fi
 
 # Strip quoted segments before looking for command names, so a word that
@@ -78,6 +81,6 @@ fi
 
 # ── Rule: simulator screenshots to an arbitrary device are fine, but keep
 # them discoverable by pointing at the wrapper when the whole app is meant. ──
-# (simctl can only reach the simulator, so it is allowed unconditionally.)
+# (simctl can only reach the simulator, so this hook never objects to it.)
 
-allow
+no_objection
