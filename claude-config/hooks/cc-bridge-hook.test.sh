@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# cc-bridge-hook.test.sh -- the `permreq' wait of cc-bridge-hook.sh, with no
-# Emacs and no Claude Code: a stand-in `emacsclient' says what the probe
-# should hear and notes the directory the hook waits in; the test then
-# writes the answer there, as Emacs would.
+# cc-bridge-hook.test.sh -- the `permreq' wait and the spool of
+# cc-bridge-hook.sh, with no Emacs and no Claude Code: a stand-in
+# `emacsclient' says what the probe should hear and notes what it is asked
+# to evaluate; for the wait, the test then writes the answer as Emacs would.
 #
 # Usage: bash cc-bridge-hook.test.sh        (exit 1 when a check fails)
 set -u
@@ -98,6 +98,56 @@ echo "no bridge in Emacs"
 run nil -none- 20
 check "the hook does not wait" "$([ "$took" -le 3 ] && echo yes)" yes
 check "and tells nobody" "$(wc -l < "$work/calls" | tr -d ' ')" 0
+
+# --- the spool: events Emacs could not take --------------------------------
+# send <event> <probe> -> runs the hook once with $payload, spool in $work/spool
+send() {
+  : > "$work/calls"
+  printf '%s' "$payload" \
+    | env -u SSH_CONNECTION HOME="$work/home" PATH="$work/bin:$PATH" \
+          FAKE_PROBE="$2" CC_BRIDGE_SPOOL_DIR="$work/spool" ITERM_SESSION_ID="w0t0p0:IID" \
+          bash "$hook" "$1" > "$work/out"
+}
+spooled() { ls -1 "$work/spool" 2>/dev/null | wc -l | tr -d ' '; }
+
+echo "an Emacs that does not answer"
+send stop nil
+check "a Stop is saved" "$(spooled)" 1
+f="$(ls -1 "$work/spool"/*.stop.json 2>/dev/null | head -n1)"
+check "its file is named after the event and is not a part file" "$([ -n "$f" ] && echo yes)" yes
+check "the header names the event and the iTerm id" \
+  "$(head -n1 "$f" | cut -f1,2 | tr '\t' '|')" "stop|w0t0p0:IID"
+check "the header's third field is a time" \
+  "$(head -n1 "$f" | cut -f3 | grep -c '^[0-9][0-9]*$')" 1
+check "the rest is the payload as it came" "$(tail -n +2 "$f")" "$payload"
+check "the hook printed nothing" "$(/bin/cat "$work/out")" ""
+send pretool nil
+check "a PreToolUse is not saved" "$(spooled)" 1
+check "and still defers to the TUI" "$(grep -c '"permissionDecision":"defer"' "$work/out")" 1
+send posttool nil
+check "a PostToolUse is not saved" "$(spooled)" 1
+send permreq nil
+send prompt-submit nil
+send notify nil
+send stop-failure nil
+check "permission, prompt, notification and failure are saved" "$(spooled)" 5
+
+echo "Emacs is back"
+send stop t
+check "the replay is asked for before the new event is delivered" \
+  "$(grep -oE '\(claude-code-bridge-spool-drain\)|claude-code-bridge--on-stop-from-file' "$work/calls" | tr -d '()' | tr '\n' ' ')" \
+  "claude-code-bridge-spool-drain claude-code-bridge--on-stop-from-file "
+check "the new event is not saved" "$(spooled)" 5
+rm -rf "$work/spool"
+send stop t
+check "with nothing saved, no replay is asked for" \
+  "$(grep -c 'claude-code-bridge-spool-drain' "$work/calls")" 0
+
+echo "a full spool"
+mkdir -p "$work/spool"
+for i in $(seq 1 500); do : > "$work/spool/filler-$i.json"; done
+send stop nil
+check "the 501st event is refused" "$(spooled)" 500
 
 [ "$failed" -eq 0 ] && echo "ALL PASS" || echo "FAILED"
 exit "$failed"

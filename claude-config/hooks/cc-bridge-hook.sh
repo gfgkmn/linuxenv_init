@@ -287,6 +287,43 @@ hold_for_answer() {   # hold_for_answer <payload-file> <iterm-id>; never returns
 }
 hold_fn=claude-code-bridge--on-permission-hold-from-file
 
+# ── Spool: events Emacs could not take ───────────────────────────────
+# When the local Emacs does not answer (restarting, hung, bridge not
+# loaded yet) the event used to be dropped: a turn that ended meanwhile
+# never showed its reply.  Now the events that still mean something
+# later are saved, one file each, and Emacs replays them when it is
+# back (claude-code-bridge-spool.el): at load, and when the next event
+# that does get through finds the folder not empty (below).
+#
+# A file is a header line -- event, iTerm id, seconds since the epoch,
+# tab-separated -- and then the payload as CC sent it.  It is written
+# as `*.part' and renamed, so Emacs never reads half of one.  PreToolUse
+# and PostToolUse are not saved: they only matter while they happen.
+SPOOL_DIR="${CC_BRIDGE_SPOOL_DIR:-$HOME/.claude/cc-bridge-spool}"
+SPOOL_MAX=500
+spool_event() {
+  local name count
+  case "$event" in
+    stop|stop-failure|prompt-submit|notify|permreq) ;;
+    *) return 0 ;;
+  esac
+  mkdir -p "$SPOOL_DIR" 2>/dev/null || { log "spool: cannot make $SPOOL_DIR"; return 0; }
+  count=$(ls -1 "$SPOOL_DIR" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "${count:-0}" -ge "$SPOOL_MAX" ]; then
+    log "spool: full ($count files), event dropped"
+    return 0
+  fi
+  name="$(date +%s.%N)-$$.$event"
+  if { printf '%s\t%s\t%s\n' "$event" "${ITERM_SESSION_ID:-}" "$(date +%s)"
+       printf '%s' "$input"; } > "$SPOOL_DIR/$name.part" 2>/dev/null \
+     && mv "$SPOOL_DIR/$name.part" "$SPOOL_DIR/$name.json" 2>/dev/null; then
+    log "spool: saved $name.json"
+  else
+    rm -f "$SPOOL_DIR/$name.part" 2>/dev/null
+    log "spool: could not write $name"
+  fi
+}
+
 log "fired: ${input:0:200}"
 
 session_id=$(echo "$input" | jq -r '.session_id // empty' 2>/dev/null)
@@ -303,8 +340,17 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
             | tr -d '[:space:]"')
   case "$probe" in
     t|hold) ;;
-    *) fail "bridge not loaded / emacs unreachable" ;;
+    *) spool_event
+       fail "bridge not loaded / emacs unreachable" ;;
   esac
+  # Emacs is back and events are waiting: have them replayed before this
+  # one is delivered, so that they arrive in the order they happened.
+  if [ -n "$(ls -A "$SPOOL_DIR" 2>/dev/null)" ]; then
+    log "spool: asking Emacs to replay"
+    emacsclient --no-wait \
+      --eval "(and (fboundp (quote claude-code-bridge-spool-drain)) (claude-code-bridge-spool-drain))" \
+      >/dev/null 2>&1 || log "spool: replay call failed"
+  fi
 
   # `$ITERM_SESSION_ID' is set by iTerm in every pane (via the
   # `Setting environment variables' integration) and cascades down
