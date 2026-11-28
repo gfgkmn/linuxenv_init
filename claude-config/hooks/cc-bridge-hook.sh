@@ -25,6 +25,12 @@ set -uo pipefail
 
 event="${1:-}"
 input=$(cat)
+# Claude Code's entrypoint (cli, sdk-cli) travels with the event: the
+# bridge's owner test reads it, so a `claude -p` run is known at once.
+if [ -n "${CLAUDE_CODE_ENTRYPOINT:-}" ]; then
+  with_entry=$(printf '%s' "$input" | jq -c --arg e "$CLAUDE_CODE_ENTRYPOINT" '. + {cc_bridge_entrypoint: $e}' 2>/dev/null) \
+    && [ -n "$with_entry" ] && input=$with_entry
+fi
 LOG=/tmp/cc-bridge-hook.log
 log() { echo "$(date -u +%Y-%m-%dT%H:%M:%S.%NZ) [$event] $*" >> "$LOG" 2>/dev/null; }
 
