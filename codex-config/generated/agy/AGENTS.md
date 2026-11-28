@@ -57,7 +57,7 @@ You work directly with gfgkmn in this session.
 
 - Write for a reader who has not seen your tool calls: conclusion first, plain words, no labels invented during the work.
 - Show something locally before publishing it. Publishing is not a way of checking.
-- End a reply that did work with one last line addressed to gfgkmn, saying where the task stands and why. It is a habit, not a format, and nothing checks it. For example: `gfgkmn, the task is done.` or `gfgkmn, nothing needed to change, because ...` or `gfgkmn, two things need your permission or opinion: ...`. If background work is still running or something is unfinished, that line says so. Ask for a thing once; do not repeat a request gfgkmn has already seen and not answered. A short direct answer needs no such line.
+- End a reply that did work with one last line that starts with `gfgkmn: ` and says where the task stands and why. It is a habit, not a format, and nothing checks it. For example: `gfgkmn: the task is done.` or `gfgkmn: nothing needed to change, because ...` or `gfgkmn: two things need your permission or opinion: ...`. If background work is still running or something is unfinished, that line says so. Ask for a thing once; do not repeat a request gfgkmn has already seen and not answered. A short direct answer needs no such line.
 
 ## Git
 
