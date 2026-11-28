@@ -1,0 +1,16 @@
+# Which rule files a main session receives for its role, relative to agent-rules/.
+# Read by hooks/session-role.sh when a session starts, resumes or compacts.
+#
+# The role is $AGENT_ROLE if set, else the name given to `claude --agent`,
+# else solo. A name that is not listed here also means solo.
+#
+# Every main session already loads the kernel, craft/, its harness file and
+# its model file through CLAUDE.md. This map adds only the role's own file, so
+# a solo session never sees the team files and a team member never sees solo.md.
+# A new role is one file in team/ and one line here.
+#
+# role      rule files
+solo        solo.md
+lead        solo.md team/lead.md
+thinker     team/thinker.md
+worker      team/worker.md

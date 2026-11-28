@@ -1,6 +1,6 @@
 # Kernel
 
-Every agent reads this, in every seat. Seat, harness and model text follow it.
+Every agent reads this, whatever its role.
 
 ## Environment
 
@@ -24,7 +24,7 @@ These actions need gfgkmn's approval, every time:
 - Spending money or large compute: paid API batches, full-scale training, cloud resources.
 - Stopping processes or tmux sessions you did not start, and any write on a remote machine.
 
-Only the lead asks gfgkmn. It says what it would do, what it recommends, and what follows from each option. Any other seat does not take the action and does not ask gfgkmn; it reports the need to whoever briefed it. An explicit request from gfgkmn for a specific action is the approval for that action.
+If you work directly with gfgkmn, ask them: say what you would do, what you recommend, and what follows from each option. If another agent briefed you, do not take the action and do not ask gfgkmn; report the need to whoever briefed you. An explicit request from gfgkmn for a specific action is the approval for that action.
 
 ## Evidence
 

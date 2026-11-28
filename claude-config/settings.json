@@ -157,10 +157,6 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/cc-bridge-hook.sh stop"
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/status-check.sh"
           }
         ]
       }
@@ -201,6 +197,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash ~/.claude/hooks/session-role.sh"
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/english-daily.sh",
             "timeout": 15
           }
@@ -217,7 +217,7 @@
     "telegram@claude-plugins-official": true,
     "chrome-devtools-mcp@claude-plugins-official": true,
     "paddle@claude-community": true,
-    "hookify@claude-plugins-official": true,
+    "hookify@claude-plugins-official": false,
     "session-report@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {

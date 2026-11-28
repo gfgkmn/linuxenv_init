@@ -9,7 +9,7 @@ Stop solving. The aim is not a better fix inside the current frame. It is to fin
 
 Skip this on a well-structured task with a known procedure. There it costs time and adds nothing.
 
-In co-op mode, put the question of step 2 to gfgkmn before you answer it yourself, in a `>>> THINK FIRST` block. Their answer, right or wrong, is the valuable part.
+In a co-op session (gfgkmn started it with `/coop`), put the question of step 2 to gfgkmn before you answer it yourself, in a `>>> THINK FIRST` block. Their answer, right or wrong, is the valuable part.
 
 ## 1. Describe the problem before touching a solution
 

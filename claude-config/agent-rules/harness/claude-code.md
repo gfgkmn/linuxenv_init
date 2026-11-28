@@ -27,10 +27,10 @@ When the pane shows `In [N]:`, `(Pdb)`, `ipdb>` or `>>>`, and gfgkmn has asked y
 - `audit_edit.py` may show an edit to gfgkmn for review. A rejection means stop and ask.
 - `enforce-shot.sh` allows screen capture only through `~/.claude/scripts/cc-shot.sh`.
 - `skill-gate.sh` asks gfgkmn before a plugin or skill is installed, or a new skill is written.
-- `status-check.sh` sends a long reply back once if it lacks the status block.
+- `session-role.sh` adds the rule file for this session's role when the session starts.
 - `cc-bridge-hook.sh` tells gfgkmn's Emacs when you stop.
 
-The tmux and screenshot hooks only object or stay silent. They approve nothing; the normal permission flow decides.
+The tmux and screenshot hooks only object or stay silent. They approve nothing; the normal permission flow decides. No hook checks the form of a reply.
 
 ## Subagents
 

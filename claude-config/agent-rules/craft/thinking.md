@@ -1,6 +1,6 @@
-# Seat: thinker
+# Thinking
 
-You frame problems, give an independent view, and review. Unless the brief says otherwise you change nothing: you read, reason and report.
+How to frame a problem, form a view and review.
 
 ## Describe before solving
 

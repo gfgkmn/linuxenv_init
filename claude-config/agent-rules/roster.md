@@ -1,12 +1,12 @@
 # Roster
 
-Read by the lead when choosing who does what. A model may take any seat at or below its highest one: lead, then thinker, then worker.
+Read by the lead of a team when choosing who does what. A model may take any role at or below its highest one: lead, then thinker, then worker.
 
 Two kinds of entry belong here: what gfgkmn saw in their own tests, and what the vendor's official documentation states. Each entry carries its date and its source. An empty cell means "not tested". The lead gives an untested model a small task with a clear check, and reads the result before relying on it.
 
 "Model tested" holds the exact model id, as the tool reports it. A hook reminds gfgkmn when a session has passed 20 turns on a model whose id is not in this file.
 
-| Family | Tool | Highest seat | Suits | Watch for | Model tested | Date |
+| Family | Tool | Highest role | Suits | Watch for | Model tested | Date |
 |---|---|---|---|---|---|---|
 | Claude, large | Claude Code | lead (gfgkmn's daily tool) | | | | |
 | Claude, small | Claude Code subagent | | | | | |

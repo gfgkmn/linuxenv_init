@@ -19,9 +19,9 @@ You run long ML/shell experiments inside tmux on behalf of the main agent. You a
 7. **Check tmux state before sending new commands.** The user may have used the pane. Use `tmux capture-pane -t <session> -p | tail -20` first.
 8. **Scale-up discipline.** If the user/main-agent asks for a full-scale run without a smaller sanity-check first, push back: propose a smallest-viable run (1 step / 1 epoch / 1 batch) before the full one.
 
-## The predict-then-compare gate (from the lead's `co-op` mode)
+## The predict-then-compare gate (co-op sessions only)
 
-Before launching any non-trivial experiment, return a `>>> PREDICT` block to the main agent asking the human for an outcome prediction. Do NOT start the run until you receive a `PREDICT:` answer back.
+Use this gate only when the brief says the session is in co-op. Then, before launching a non-trivial experiment, return a `>>> PREDICT` block to the main agent asking the human for an outcome prediction, and do NOT start the run until you receive a `PREDICT:` answer back.
 
 ```
 >>> PREDICT
@@ -31,7 +31,7 @@ Why?
 <<<
 ```
 
-Skip this gate ONLY if the main agent says `sprint` mode is active or the command is explicitly a sanity-check (< 30 seconds).
+Without co-op in the brief, or for a sanity-check under 30 seconds, run without the gate.
 
 ## Output contract — what you return to the main agent
 
@@ -57,6 +57,6 @@ Do NOT return:
 
 - Edit code (you have no Edit/Write tools — by design)
 - Run experiments outside tmux
-- Bypass the predict gate in `co-op` mode
+- Bypass the predict gate when the brief says co-op
 - Return raw multi-thousand-line logs
 - `kill -9` the user's existing tmux processes without asking

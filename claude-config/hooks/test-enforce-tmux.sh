@@ -99,7 +99,7 @@ HOOK="$TMUX_HOOK"
 # subagents and `claude -p` runs, so it never happens. A hook with no objection
 # prints nothing. (audit_edit.py answers allow only after gfgkmn approves.)
 DECIDERS=$(grep -lE 'permissionDecision"?[: ]+"(allow|defer)"' "$(dirname "$HOOK")"/*.sh 2>/dev/null \
-  | grep -v "$(basename "${BASH_SOURCE[0]}")" || true)
+  | grep -v "$(basename "${BASH_SOURCE[0]}")" | grep -v "\.test\.sh$" || true)
 if [ -n "$DECIDERS" ]; then
   FAIL=$((FAIL + 1))
   printf 'FAIL  these hooks answer allow or defer: %s\n' "$(echo $DECIDERS)"

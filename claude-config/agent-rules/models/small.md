@@ -8,4 +8,4 @@ A procedural scaffold. These are the rules that were written for earlier models 
 - Use the dedicated file and search tools in preference to shell commands.
 - Do not create a new file unless the brief asks for one.
 - When a command fails, read the whole error before doing anything else.
-- You hold the worker seat only. Do not reframe the task; report instead.
+- You hold the worker role only. Do not reframe the task; report instead.

@@ -2,11 +2,11 @@
 # Read by hooks/subagent-rules.sh (Claude Code) and codex-config/gen.py (Codex).
 #
 # Every subagent definition in claude-config/agents/ sets `omitClaudeMd: true`,
-# so a subagent does not load the lead's rules. A subagent listed here gets the
+# so a subagent does not load the main session's rules. A subagent listed here gets the
 # files named on its line instead. A subagent not listed gets only its own
 # definition.
 #
 # agent-type      rule files
 ml-runner         kernel.md
-emacs-probe       kernel.md seats/thinker.md
+emacs-probe       kernel.md craft/thinking.md team/thinker.md
 memory-curator    kernel.md

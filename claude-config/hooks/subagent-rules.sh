@@ -3,7 +3,7 @@
 # agent-rules/subagents.map.
 #
 # Subagent definitions set `omitClaudeMd: true`, so they no longer load the
-# lead's rules. This hook supplies the kernel (and a seat, where listed) so the
+# main session's rules. This hook supplies the kernel (and more, where listed) so the
 # split is enforced by Claude Code and does not depend on the brief.
 #
 # Prints nothing for a subagent that is not in the map.
