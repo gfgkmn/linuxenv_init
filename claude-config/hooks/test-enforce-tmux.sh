@@ -107,5 +107,33 @@ else
   PASS=$((PASS + 1))
 fi
 
+# ── The rule hooks find agent-rules/ without a ~/.claude/agent-rules link ──
+# A machine that only has ~/.claude/hooks linked into the repository must
+# still get its rule files. HOME points at a folder with that one link.
+HOOKS_DIR="$(cd "$(dirname "$HOOK")" && pwd -P)"
+FAKE_HOME=$(mktemp -d)
+trap 'rm -rf "$FAKE_HOME"' EXIT
+mkdir -p "$FAKE_HOME/.claude"
+ln -s "$HOOKS_DIR" "$FAKE_HOME/.claude/hooks"
+
+expect_rules() {
+  local label="$1" want="$2" out
+  shift 2
+  out=$(env -u AGENT_RULES_DIR HOME="$FAKE_HOME" "$@" 2>/dev/null | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)
+  if printf '%s' "$out" | grep -qF -- "$want"; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1))
+    printf 'FAIL  %s: no "%s" in the hook output\n' "$label" "$want"
+  fi
+}
+
+expect_rules "session-role, default"  "# Working with gfgkmn" \
+  bash -c 'echo "{}" | bash "$HOME/.claude/hooks/session-role.sh"'
+expect_rules "session-role, worker"   "# Role: worker" \
+  bash -c 'echo "{}" | AGENT_ROLE=worker bash "$HOME/.claude/hooks/session-role.sh"'
+expect_rules "subagent-rules, ml-runner" "# Kernel" \
+  bash -c 'echo "{\"agent_type\":\"ml-runner\"}" | bash "$HOME/.claude/hooks/subagent-rules.sh"'
+
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" = 0 ]

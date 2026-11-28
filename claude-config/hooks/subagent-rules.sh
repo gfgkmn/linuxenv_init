@@ -10,13 +10,21 @@
 
 set -uo pipefail
 
-RULES="${AGENT_RULES_DIR:-$HOME/.claude/agent-rules}"
+# The rules sit beside this script's real directory (hooks/ and agent-rules/
+# are siblings in claude-config), so no ~/.claude/agent-rules link is needed.
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+RULES="${AGENT_RULES_DIR:-$HERE/../agent-rules}"
+[ -d "$RULES" ] || RULES="$HOME/.claude/agent-rules"
 MAP="$RULES/subagents.map"
 LIMIT=9500   # Claude Code caps a hook's additionalContext at 10,000 characters
 
 INPUT=$(cat)
 TYPE=$(printf '%s' "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
-[ -n "$TYPE" ] && [ -r "$MAP" ] || exit 0
+[ -n "$TYPE" ] || exit 0
+if [ ! -r "$MAP" ]; then
+  echo "subagent-rules.sh: no subagents.map under $RULES; no rules added for $TYPE" >&2
+  exit 0
+fi
 
 FILES=$(awk -v t="$TYPE" '$1 == t { $1 = ""; print; exit }' "$MAP")
 [ -n "$FILES" ] || exit 0

@@ -11,12 +11,19 @@
 
 set -uo pipefail
 
-RULES="${AGENT_RULES_DIR:-$HOME/.claude/agent-rules}"
+# The rules sit beside this script's real directory (hooks/ and agent-rules/
+# are siblings in claude-config), so no ~/.claude/agent-rules link is needed.
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+RULES="${AGENT_RULES_DIR:-$HERE/../agent-rules}"
+[ -d "$RULES" ] || RULES="$HOME/.claude/agent-rules"
 MAP="$RULES/roles.map"
 LIMIT=9500   # Claude Code caps a hook's additionalContext at 10,000 characters
 
 INPUT=$(cat)
-[ -r "$MAP" ] || exit 0
+if [ ! -r "$MAP" ]; then
+  echo "session-role.sh: no roles.map under $RULES; no role file added" >&2
+  exit 0
+fi
 
 files_for() {
   awk -v r="$1" '{ sub(/#.*/, "") } $1 == r { $1 = ""; print; exit }' "$MAP"
